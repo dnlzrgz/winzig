@@ -3,10 +3,10 @@ import httpx
 import feedparser
 from sqlmodel import select
 from selectolax.parser import HTMLParser
-from models.models import Post
+from winzig.models import Post
 
 
-async def fetch_content(client: httpx.AsyncClient, url: str):
+async def fetch_content(client, url):
     try:
         async with client.stream("GET", url) as response:
             if response.status_code != 200:
