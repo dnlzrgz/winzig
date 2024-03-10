@@ -11,6 +11,7 @@
 *.tax2010
 *.vcf
 *.xml
+*.db
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

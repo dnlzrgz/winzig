@@ -1,17 +1,20 @@
+import asyncio
 import httpx
 import feedparser
+from sqlmodel import select
 from selectolax.parser import HTMLParser
-from rich.progress import track
 from models.models import Post
 
 
-def fetch_content(client, url):
+async def fetch_content(client: httpx.AsyncClient, url: str):
     try:
-        r = client.get(url)
-        return r
-    except Exception as e:
-        print(f"There was an error while fetching content from '{url}': {e}")
-        return httpx.Response(status_code=404)
+        async with client.stream("GET", url) as response:
+            if response.status_code != 200:
+                return ""
+            return await response.aread()
+    except httpx.HTTPError as e:
+        print(f"HTTP error for '{url}' - {e}")
+        return ""
 
 
 def clean_content(url, html):
@@ -25,42 +28,44 @@ def clean_content(url, html):
         cleaned_text = " ".join(chunk for chunk in chunks if chunk)
         return cleaned_text
     except Exception as e:
-        print(f"There was an error while extracting content from '{url}': {e}")
+        print(f"Error getting content from '{url}' - {e}")
 
 
-def get_posts_from_feed(feed_url):
+async def get_posts_from_feed(feed_url):
     try:
         feed = feedparser.parse(feed_url)
         return [entry.link for entry in feed.entries]
     except Exception as e:
-        print(f"There was an error while parsing feed {feed_url}: {e}")
+        print(f"Error parsing feed {feed_url} - {e}")
         return []
 
 
-def crawl(session, feed_file):
+async def process_post(session, client, post):
+    stmt = select(Post).where(Post.url == post)
+    post_db = session.exec(stmt).first()
+    if post_db:
+        return
+
+    response_text = await fetch_content(client, post)
+    if response_text:
+        cleaned_content = clean_content(post, response_text)
+        post_obj = Post(
+            url=post,
+            content=cleaned_content,
+        )
+        session.add(post_obj)
+
+
+async def crawl(session, feed_file):
     with open(feed_file, "r") as f:
         feeds_urls = [line.strip() for line in f]
 
-    client = httpx.Client()
-    try:
+    async with httpx.AsyncClient() as client:
         for feed_url in feeds_urls:
-            posts = get_posts_from_feed(feed_url)
+            posts = await get_posts_from_feed(feed_url)
+            tasks = []
+            for post in posts:
+                tasks.append(process_post(session, client, post))
 
-            for post in track(posts, description=f"fetching posts from {feed_url}..."):
-                response = fetch_content(client, post)
-                if response.status_code != 200:
-                    response.close()
-                    continue
-
-                cleaned_content = clean_content(post, response.text)
-                post = Post(
-                    url=post,
-                    content=cleaned_content,
-                )
-                session.add(post)
-
-                response.close()
-
+            await asyncio.gather(*tasks)
             session.commit()
-    finally:
-        client.close()
