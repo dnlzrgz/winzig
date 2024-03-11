@@ -4,7 +4,7 @@ import httpx
 import feedparser
 from sqlmodel import Session, select
 from selectolax.parser import HTMLParser
-from winzig.models import Post
+from winzig.models import Feed, Post
 
 
 async def fetch_content(client: httpx.AsyncClient, url: str) -> bytes | None:
@@ -41,7 +41,12 @@ async def get_posts_from_feed(feed_url: str) -> list[str]:
         return []
 
 
-async def process_post(session: Session, client: httpx.AsyncClient, post: str) -> None:
+async def process_post(
+    session: Session,
+    client: httpx.AsyncClient,
+    feed: Feed,
+    post: str,
+) -> None:
     stmt = select(Post).where(Post.url == post)
     post_db = session.exec(stmt).first()
     if post_db:
@@ -54,19 +59,30 @@ async def process_post(session: Session, client: httpx.AsyncClient, post: str) -
             post_obj = Post(
                 url=post,
                 content=cleaned_content,
+                feed=feed,
             )
 
             session.add(post_obj)
 
 
-async def crawl(session: Session, feed_file: Path):
-    with open(feed_file, "r") as f:
-        feeds_urls = [line.strip() for line in f]
+async def crawl(session: Session, feed_file: Path | None = None):
+    if feed_file:
+        with open(feed_file, "r") as f:
+            for line in f:
+                url = line.strip()
+                feed_db = session.exec(select(Feed).where(Feed.url == url)).first()
+                if not feed_db:
+                    feed = Feed(url=url)
+                    session.add(feed)
+
+                session.commit()
+
+    feeds = session.exec(select(Feed)).all()
 
     async with httpx.AsyncClient() as client:
-        for feed_url in feeds_urls:
-            posts = await get_posts_from_feed(feed_url)
-            tasks = [process_post(session, client, post) for post in posts]
+        for feed in feeds:
+            posts = await get_posts_from_feed(feed.url)
+            tasks = [process_post(session, client, feed, post) for post in posts]
 
             await asyncio.gather(*tasks)
             session.commit()
