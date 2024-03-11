@@ -1,23 +1,6 @@
 from collections import defaultdict
 from math import log
-import string
-
-
-def update_url_scores(old: dict[str, float], new: dict[str, float]) -> dict[str, float]:
-    for url, score in new.items():
-        if url in old:
-            old[url] += score
-        else:
-            old[url] = score
-
-    return old
-
-
-def normalize_text(text: str) -> str:
-    trans_table = str.maketrans(string.punctuation, " " * len(string.punctuation))
-    text_without_punc = text.translate(trans_table)
-    text_without_double_spaces = " ".join(text_without_punc.split())
-    return text_without_double_spaces
+from winzig.utils import normalize_text, update_url_scores
 
 
 class SearchEngine:
