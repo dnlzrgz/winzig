@@ -59,7 +59,7 @@ def search(
             print(f"Problem with the database: {e}")
             return
 
-        data = [(post.url, post.normalized_content) for post in posts]
+        data = [(post.url, post.content) for post in posts]
         search_engine.bulk_index(data)
 
     search_results = search_engine.search(query)

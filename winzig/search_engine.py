@@ -22,7 +22,7 @@ class SearchEngine:
     def avdl(self) -> float:
         if not hasattr(self, "_avdl"):
             self._avdl = (
-                sum(self.num_of_docs for d in self._docs.values()) / self.num_of_docs
+                sum(self.num_of_docs for _ in self._docs.values()) / self.num_of_docs
             )
         return self._avdl
 
