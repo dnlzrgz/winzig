@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+import logging
 import httpx
 import feedparser
 from sqlmodel import Session, select
@@ -8,15 +9,24 @@ from winzig.models import Feed, Post
 
 
 async def fetch_content(client: httpx.AsyncClient, url: str) -> bytes | None:
+    logging.debug(f"Fetching content from '{url}'")
     try:
         async with client.stream("GET", url) as response:
+            if response.status_code != 200:
+                logging.error(
+                    f"Got bad status code from '{url}' - {response.status_code}"
+                )
+                return None
+
             return await response.aread()
     except httpx.HTTPError as e:
-        print(f"HTTP error for '{url}' - {e}")
+        logging.error(f"Got HTTP error for '{url}': {e}")
         return None
 
 
 def clean_content(url: str, html: bytes) -> str | None:
+    logging.debug(f"Cleaning content from {url}")
+
     try:
         tree = HTMLParser(html)
         for tag in tree.css("script, style"):
@@ -28,16 +38,18 @@ def clean_content(url: str, html: bytes) -> str | None:
 
         return cleaned_text
     except Exception as e:
-        print(f"Error getting content from '{url}' - {e}")
+        logging.error(f"Error cleaning content from '{url}': {e}")
         return None
 
 
 async def get_posts_from_feed(feed_url: str) -> list[str]:
+    logging.debug(f"Getting posts from '{feed_url}'")
+
     try:
         feed = feedparser.parse(feed_url)
         return [entry.link for entry in feed.entries if entry.link]
     except Exception as e:
-        print(f"Error parsing feed {feed_url} - {e}")
+        logging.error(f"Error parsing feed '{feed_url}': {e}")
         return []
 
 
@@ -47,9 +59,12 @@ async def process_post(
     feed: Feed,
     post: str,
 ) -> None:
+    logging.debug(f"Processing post '{post}'")
+
     stmt = select(Post).where(Post.url == post)
     post_db = session.exec(stmt).first()
     if post_db:
+        logging.debug(f"Post '{post}' is already in the database")
         return
 
     response_text = await fetch_content(client, post)
@@ -62,6 +77,7 @@ async def process_post(
                 feed=feed,
             )
 
+            logging.debug(f"Saving post '{post}' to the database")
             session.add(post_obj)
 
 
@@ -78,6 +94,9 @@ async def crawl(session: Session, feed_file: Path | None = None):
                 session.commit()
 
     feeds = session.exec(select(Feed)).all()
+    if not feeds:
+        print("No feeds found. Please add feeds before crawling.")
+        return
 
     async with httpx.AsyncClient() as client:
         for feed in feeds:

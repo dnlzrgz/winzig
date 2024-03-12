@@ -7,28 +7,19 @@ class SearchEngine:
     def __init__(self, k1: float = 1.5, b: float = 0.75) -> None:
         self._idx: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
         self._docs: dict[str, str] = {}
+        self.num_docs: int = len(self._docs)
         self.k1 = k1
         self.b = b
 
     @property
-    def post(self) -> list[str]:
-        return list(self._docs.keys())
-
-    @property
-    def num_of_docs(self) -> int:
-        return len(self._docs)
-
-    @property
     def avdl(self) -> float:
         if not hasattr(self, "_avdl"):
-            self._avdl = (
-                sum(self.num_of_docs for _ in self._docs.values()) / self.num_of_docs
-            )
+            self._avdl = sum(self.num_docs for d in self._docs.values()) / self.num_docs
         return self._avdl
 
     def idf(self, kw: str) -> float:
         n_kw = len(self.get_urls(kw))
-        return log((self.num_of_docs - n_kw + 0.5) / (n_kw + 0.5) + 1)
+        return log((self.num_docs - n_kw + 0.5) / (n_kw + 0.5) + 1)
 
     def bm25(self, kw: str) -> dict[str, float]:
         result = {}
@@ -61,6 +52,7 @@ class SearchEngine:
             del self._avdl
 
     def bulk_index(self, docs: list[tuple[str, str]]):
+        self.num_docs = len(docs)
         for url, content in docs:
             self.index(url, content)
 
