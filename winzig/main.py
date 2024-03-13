@@ -6,16 +6,19 @@ from sqlmodel import Session, select
 from sqlalchemy import exc
 from winzig.idf import recalculate_idf
 from winzig.models import Post
-from winzig.database import create_db_and_tables, engine
+from winzig.database import create_db_and_tables, get_engine
 from winzig.crawler import crawl
 from winzig.search_engine import SearchEngine
 from winzig.utils import get_top_urls
+from winzig.config import Config
 
 logging.basicConfig(
     level=logging.ERROR,
     format="%(asctime)s %(levelname)s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S %z",
 )
+
+engine = get_engine(Config().sqlite_url)
 
 
 @click.command(
@@ -38,8 +41,6 @@ logging.basicConfig(
     show_default=True,
 )
 def crawl_links(file: Path, verbose: bool):
-    create_db_and_tables()
-
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
@@ -81,8 +82,16 @@ def crawl_links(file: Path, verbose: bool):
     help="Maximum number of search results.",
     show_default=True,
 )
-def search_links(query: str, k1: float, b: float, n: int):
-    create_db_and_tables()
+@click.option(
+    "--verbose",
+    type=bool,
+    is_flag=True,
+    help="Enable verbose logging.",
+    show_default=True,
+)
+def search_links(query: str, k1: float, b: float, n: int, verbose: bool):
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
 
     with Session(engine) as session:
         search_engine = SearchEngine(session, k1=k1, b=b)
@@ -92,6 +101,12 @@ def search_links(query: str, k1: float, b: float, n: int):
             posts = session.exec(stmt).all()
         except exc.SQLAlchemyError as e:
             print(f"Problem with the database: {e}")
+            return
+
+        if len(posts) == 0:
+            print(
+                "No posts found in the database. You may need to crawl some links first."
+            )
             return
 
         data = [(post.url, post.content) for post in posts]
@@ -106,7 +121,7 @@ def search_links(query: str, k1: float, b: float, n: int):
 
 @click.group()
 def cli():
-    pass
+    create_db_and_tables(engine)
 
 
 cli.add_command(crawl_links)
