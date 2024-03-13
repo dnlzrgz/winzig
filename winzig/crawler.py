@@ -29,7 +29,9 @@ def clean_content(url: str, html: bytes) -> str | None:
 
     try:
         tree = HTMLParser(html)
-        for tag in tree.css("script, style"):
+        for tag in tree.css(
+            "script, style, link, noscript, object, img, embed, iframe, svg, canvas, form, audio, video"
+        ):
             tag.decompose()
         text = "".join(node.text(deep=True) for node in tree.css("body"))
         lines = (line.strip() for line in text.splitlines())
@@ -42,14 +44,18 @@ def clean_content(url: str, html: bytes) -> str | None:
         return None
 
 
-async def get_posts_from_feed(feed_url: str) -> list[str]:
-    logging.debug(f"Getting posts from '{feed_url}'")
+async def get_posts_from_feed(session: Session, id: int, url: str) -> list[str]:
+    logging.debug(f"Getting posts from feed '{url}'")
 
     try:
-        feed = feedparser.parse(feed_url)
-        return [entry.link for entry in feed.entries if entry.link]
+        feed = feedparser.parse(url)
+        statement = select(Post, Feed).where(Post.feed_id == id)
+        results = session.exec(statement).all()
+        posts_db_urls = {post[0].url for post in results}
+
+        return [entry.link for entry in feed.entries if entry.link not in posts_db_urls]
     except Exception as e:
-        logging.error(f"Error parsing feed '{feed_url}': {e}")
+        logging.error(f"Error parsing feed '{url}': {e}")
         return []
 
 
@@ -60,12 +66,6 @@ async def process_post(
     post: str,
 ) -> None:
     logging.debug(f"Processing post '{post}'")
-
-    stmt = select(Post).where(Post.url == post)
-    post_db = session.exec(stmt).first()
-    if post_db:
-        logging.debug(f"Post '{post}' is already in the database")
-        return
 
     response_text = await fetch_content(client, post)
     if response_text:
@@ -83,6 +83,7 @@ async def process_post(
 
 async def crawl(session: Session, feed_file: Path | None = None):
     if feed_file:
+        logging.debug(f"Reading file {feed_file}")
         with open(feed_file, "r") as f:
             for line in f:
                 url = line.strip()
@@ -93,6 +94,7 @@ async def crawl(session: Session, feed_file: Path | None = None):
 
                 session.commit()
 
+    logging.debug("Loading feeds")
     feeds = session.exec(select(Feed)).all()
     if not feeds:
         print("No feeds found. Please add feeds before crawling.")
@@ -100,7 +102,7 @@ async def crawl(session: Session, feed_file: Path | None = None):
 
     async with httpx.AsyncClient() as client:
         for feed in feeds:
-            posts = await get_posts_from_feed(feed.url)
+            posts = await get_posts_from_feed(session, feed.id, feed.url)
             tasks = [process_post(session, client, feed, post) for post in posts]
 
             await asyncio.gather(*tasks)
