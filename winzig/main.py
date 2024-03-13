@@ -4,6 +4,7 @@ from pathlib import Path
 import click
 from sqlmodel import Session, select
 from sqlalchemy import exc
+from winzig.idf import recalculate_idf
 from winzig.models import Post
 from winzig.database import create_db_and_tables, engine
 from winzig.crawler import crawl
@@ -44,6 +45,7 @@ def crawl_links(file: Path, verbose: bool):
 
     with Session(engine) as session:
         asyncio.run(crawl(session, file))
+        recalculate_idf(session)
 
 
 @click.command(
@@ -73,7 +75,7 @@ def crawl_links(file: Path, verbose: bool):
     show_default=True,
 )
 @click.option(
-    "--n",
+    "-n",
     type=int,
     default=5,
     help="Maximum number of search results.",
@@ -82,8 +84,8 @@ def crawl_links(file: Path, verbose: bool):
 def search_links(query: str, k1: float, b: float, n: int):
     create_db_and_tables()
 
-    search_engine = SearchEngine(k1=k1, b=b)
     with Session(engine) as session:
+        search_engine = SearchEngine(session, k1=k1, b=b)
         posts = []
         try:
             stmt = select(Post)
@@ -95,11 +97,11 @@ def search_links(query: str, k1: float, b: float, n: int):
         data = [(post.url, post.content) for post in posts]
         search_engine.bulk_index(data)
 
-    search_results = search_engine.search(query)
-    search_results = get_top_urls(search_results, n)
+        search_results = search_engine.search(query)
+        search_results = get_top_urls(search_results, n)
 
-    for result in search_results:
-        print(result)
+        for result in search_results:
+            print(result)
 
 
 @click.group()

@@ -1,29 +1,44 @@
 from collections import defaultdict
-from math import log
+from sqlmodel import Session, select
+from winzig.models import IDF
 from winzig.utils import normalize_text, update_url_scores
 
 
 class SearchEngine:
-    def __init__(self, k1: float = 1.5, b: float = 0.75) -> None:
+    def __init__(self, session: Session, k1: float = 1.5, b: float = 0.75) -> None:
         self._idx: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
         self._docs: dict[str, str] = {}
-        self.num_docs: int = len(self._docs)
         self.k1 = k1
         self.b = b
+        self.session = session
+
+    @property
+    def post(self) -> list[str]:
+        return list(self._docs.keys())
+
+    @property
+    def num_of_docs(self) -> int:
+        return len(self._docs)
 
     @property
     def avdl(self) -> float:
         if not hasattr(self, "_avdl"):
-            self._avdl = sum(self.num_docs for d in self._docs.values()) / self.num_docs
+            self._avdl = (
+                sum(self.num_of_docs for d in self._docs.values()) / self.num_of_docs
+            )
         return self._avdl
 
-    def idf(self, kw: str) -> float:
-        n_kw = len(self.get_urls(kw))
-        return log((self.num_docs - n_kw + 0.5) / (n_kw + 0.5) + 1)
+    def get_idf(self, kw: str) -> float:
+        statement = select(IDF).where(IDF.term == kw)
+        idf_db = self.session.exec(statement).first()
+        if not idf_db:
+            return 0.0
+
+        return idf_db.score
 
     def bm25(self, kw: str) -> dict[str, float]:
         result = {}
-        idf_score = self.idf(kw)
+        idf_score = self.get_idf(kw)
         avldl = self.avdl
         for url, freq in self.get_urls(kw).items():
             numerator = freq * (self.k1 + 1)
@@ -52,7 +67,6 @@ class SearchEngine:
             del self._avdl
 
     def bulk_index(self, docs: list[tuple[str, str]]):
-        self.num_docs = len(docs)
         for url, content in docs:
             self.index(url, content)
 
