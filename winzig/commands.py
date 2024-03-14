@@ -35,7 +35,6 @@ def crawl_links(ctx, file: Path, verbose: bool):
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    # TODO: check if file path exists
     with Session(ctx.obj["engine"]) as session:
         asyncio.run(crawl(session, file))
         asyncio.run(recalculate_idfs(session))

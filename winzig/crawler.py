@@ -83,16 +83,22 @@ async def process_post(
 
 async def crawl(session: Session, feed_file: Path | None = None):
     if feed_file:
-        logging.debug(f"Reading file {feed_file}")
-        with open(feed_file, "r") as f:
-            for line in f:
-                url = line.strip()
-                feed_db = session.exec(select(Feed).where(Feed.url == url)).first()
-                if not feed_db:
-                    feed = Feed(url=url)
-                    session.add(feed)
+        if not feed_file.exists():
+            print(
+                f"File {feed_file} does not exist. Please if you want to extract feed from a file specify a correct file."
+            )
 
-                session.commit()
+        else:
+            logging.debug(f"Reading file {feed_file}")
+            with open(feed_file, "r") as f:
+                for line in f:
+                    url = line.strip()
+                    feed_db = session.exec(select(Feed).where(Feed.url == url)).first()
+                    if not feed_db:
+                        feed = Feed(url=url)
+                        session.add(feed)
+
+                    session.commit()
 
     logging.debug("Loading feeds")
     feeds = session.exec(select(Feed)).all()
