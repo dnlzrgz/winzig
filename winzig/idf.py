@@ -15,9 +15,9 @@ async def get_terms_freq(content: str, term_freq: Counter, lock: asyncio.Lock) -
         term_freq.update(terms)
 
 
-async def calculate_idf_score(session: Session, total_posts: int, idf: IDF):
-    score = log(total_posts / (idf.frequency + 1))
-    idf.score = score
+async def calculate_idf_score(session: Session, total_posts: int, term: str, freq: int):
+    score = log(total_posts / (freq + 1))
+    idf = IDF(term=term, score=score, frequency=freq)
     session.add(idf)
 
 
@@ -28,27 +28,23 @@ async def calculate_idfs(session: Session):
         print("No posts found.")
         return None
 
+    logging.info("Calculating terms frequency")
     tasks = []
     terms_freq = Counter()
     lock = asyncio.Lock()
     for post in posts_db:
-        logging.info("Calculating terms frequency")
         task = get_terms_freq(post.content, terms_freq, lock)
         tasks.append(task)
 
     await asyncio.gather(*tasks)
 
-    for term, freq in terms_freq.items():
-        logging.info(f"Adding term {term} to the database")
-        idf = IDF(term=term, frequency=freq)
-        session.add(idf)
-
-    session.commit()
-
     logging.info("Calculating IDF scores")
-    idfs_db = session.exec(select(IDF)).all()
-    tasks = [calculate_idf_score(session, total_posts, idf) for idf in idfs_db]
+    tasks = []
+    for term, freq in terms_freq.items():
+        tasks.append(calculate_idf_score(session, total_posts, term, freq))
+
     await asyncio.gather(*tasks)
+    session.commit()
 
     session.commit()
 

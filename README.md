@@ -19,13 +19,14 @@ For quite some time, I've been contemplating the idea of creating my own persona
 This project started as a "manual" clone of the `microsearch` project to be able to better understand how some things worked. Later, I decided to start implementing some changes like using [`httpx`](https://www.python-httpx.org/) instead of [`aiohttp`](https://docs.aiohttp.org/en/stable/index.html) or keeping all the data in a SQLite database.  
 
 ## Features
-- **Fetch only what you need**: winzig optimizes data retrieval by exclusing content that is already in the database, making sure that only new content is fetched after the intial crawl.  
+
+- **Fetch only what you need**: winzig optimizes data retrieval by excluding content that is already in the database, making sure that only new content is fetched after the initial crawl.  
 - **Async, Async, Async**: crawling as well as the posterior data processing operate asynchronously, resulting in lightning-fast performance.
 - **Efficient data management with SQLite**: everything is kept in a SQLite database in your home directory.  
 - **Easy to use**: searching is just one command; the setup is handled after the initial data fetching.
 
-
 ## Installation
+
 > You'll need Python >= 3.12 to be able to run winzig.
 
 ### pip
@@ -35,7 +36,6 @@ pip install winzig
 ```
 
 ### pipx
-
 
 ```bash
 pipx install winzig
@@ -99,6 +99,7 @@ Once all the posts have been crawled, it proceeds to calculate the Inverse Docum
 winzig crawl --file="./urls" --verbose
 ```
 
+> While the crawling is a pretty straightforward process, the method used for calculating the IDFs might lead to unexpectedly high memory usage due to how the terms are being hold into memory before adding them to the database. So monitoring the memory during this process might be a good idea.
 
 ### Searching
 
@@ -114,17 +115,18 @@ By default the number of results is `5` but you can change this by using the `-n
 winzig search --query="async databases with sqlalchemy" -n 10
 ```
 
-
 ## Roadmap
 
 - [ ] Add tests.  
+- [ ] Improving IDF calculation process.  
 - [ ] Add a TUI using [`textual`](https://textual.textualize.io/).  
 - [ ] Add documents like markdown or plain text files.  
 - [ ] Add support for PDFs and other formats.  
 - [ ] Make the CLI nicer.  
 - [ ] Add commands to manage the SQLite database.  
-
+- [ ] Add support for advanced queries.  
 
 ## Contributing
+
 If you are interested in contributing, please open an issue first. I will try to answer as soon as possible.  
 
