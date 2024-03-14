@@ -7,6 +7,13 @@ from sqlmodel import Session, select
 from selectolax.parser import HTMLParser
 from winzig.models import Feed, Post
 
+headers = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Encoding": "gzip, deflate",
+    "Accept-Language": "en-GB,en;q=0.6",
+}
+
 
 async def fetch_content(client: httpx.AsyncClient, url: str) -> bytes | None:
     logging.debug(f"Fetching content from '{url}'")
@@ -49,9 +56,9 @@ async def get_posts_from_feed(session: Session, id: int, url: str) -> list[str]:
 
     try:
         feed = feedparser.parse(url)
-        statement = select(Post, Feed).where(Post.feed_id == id)
+        statement = select(Post).where(Post.feed_id == id)
         results = session.exec(statement).all()
-        posts_db_urls = {post[0].url for post in results}
+        posts_db_urls = {post.url for post in results}
 
         return [entry.link for entry in feed.entries if entry.link not in posts_db_urls]
     except Exception as e:
@@ -106,7 +113,7 @@ async def crawl(session: Session, feed_file: Path | None = None):
         print("No feeds found. Please add feeds before crawling.")
         return
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(headers=headers) as client:
         for feed in feeds:
             posts = await get_posts_from_feed(session, feed.id, feed.url)
             tasks = [process_post(session, client, feed, post) for post in posts]
