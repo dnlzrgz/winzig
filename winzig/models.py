@@ -21,4 +21,5 @@ class Post(SQLModel, table=True):
 class IDF(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     term: str = Field(index=True)
-    score: float
+    score: float = Field(default=0.0)
+    frequency: int = Field(default=0)

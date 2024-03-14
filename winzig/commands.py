@@ -4,7 +4,7 @@ from pathlib import Path
 import click
 from sqlmodel import Session, select
 from sqlalchemy import exc
-from winzig.idf import recalculate_idf
+from winzig.idf import recalculate_idfs
 from winzig.models import Post
 from winzig.crawler import crawl
 from winzig.search_engine import SearchEngine
@@ -35,9 +35,10 @@ def crawl_links(ctx, file: Path, verbose: bool):
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
+    # TODO: check if file path exists
     with Session(ctx.obj["engine"]) as session:
         asyncio.run(crawl(session, file))
-        recalculate_idf(session)
+        asyncio.run(recalculate_idfs(session))
 
 
 @click.command(

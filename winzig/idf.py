@@ -1,63 +1,62 @@
-from collections import defaultdict
+import asyncio
 import logging
 from math import log
-from sqlmodel import Session, func, select
+from collections import Counter
+from sqlmodel import Session, select
 from sqlalchemy import delete
 from winzig.models import Post, IDF
 from winzig.utils import normalize_text
 
 
-def get_terms_from_content(content: str) -> dict[str, int]:
+def get_terms_freq_from_content(content: str) -> dict[str, int]:
     normalized_content = normalize_text(content)
-
     terms = normalized_content.split()
-    terms_count = defaultdict(int)
-    for term in terms:
-        terms_count[term] += 1
-
-    return terms_count
+    return Counter(terms)
 
 
-def calculate_idf(session: Session, total_docs: int, batch_size: int):
-    current_offset = 0
-    while current_offset < total_docs:
-        limit = min(batch_size, total_docs - current_offset)
-        statement = select(Post).offset(current_offset).limit(limit)
-        posts_db = session.exec(statement).all()
+async def calculate_idf_score(session: Session, total_posts: int, idf: IDF):
+    score = log(total_posts / (idf.frequency + 1))
+    idf.score = score
+    session.add(idf)
 
-        doc_freqs = defaultdict(int)
-        for post in posts_db:
-            terms = get_terms_from_content(post.content)
-            for term in terms:
-                doc_freqs[term] += 1
 
-        for term, freq in doc_freqs.items():
-            score = log(total_docs / (freq + 1))
+async def calculate_idfs(session: Session):
+    posts_db = session.exec(select(Post)).all()
+    total_posts = len(posts_db)
+    if posts_db is None:
+        # TODO: Exception
+        return None
+
+    count = 1
+    for post in posts_db:
+        logging.info(f"Calculating IDF for post {count}/{total_posts}")
+        terms_freq = get_terms_freq_from_content(post.content)
+        for term, freq in terms_freq.items():
             statement = select(IDF).where(IDF.term == term)
-            idf_db = session.exec(statement).first()
-            if idf_db is not None:
-                logging.info(f"IDF score for term '{term}' already in the database.")
-                continue
+            idf = session.exec(statement).first()
+            if idf is not None:
+                idf.frequency += freq
+            else:
+                idf = IDF(term=term, frequency=freq)
 
-            idf = IDF(term=term, score=score)
             session.add(idf)
-            logging.info(f"Added IDF score for term '{term}'")
 
         session.commit()
-        current_offset += batch_size
+        count += 1
+
+    logging.info("Calculating IDF scores")
+    idfs_db = session.exec(select(IDF)).all()
+    tasks = [calculate_idf_score(session, total_posts, idf) for idf in idfs_db]
+    await asyncio.gather(*tasks)
+
+    session.commit()
 
 
-def recalculate_idf(session: Session, batch_size: int = 100):
+async def recalculate_idfs(session: Session):
     logging.info("Recalculating IDF scores.")
     statement = delete(IDF)
     session.exec(statement)
     session.commit()
     logging.info("Previous IDF scores deleted.")
 
-    statement = select(func.count()).select_from(Post)
-    total_docs = session.scalar(statement)
-    if total_docs == 0 or total_docs is None:
-        # TODO: Exception
-        return None
-
-    calculate_idf(session, total_docs, batch_size)
+    await calculate_idfs(session)
