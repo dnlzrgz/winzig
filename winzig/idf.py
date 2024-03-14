@@ -8,10 +8,11 @@ from winzig.models import Post, IDF
 from winzig.utils import normalize_text
 
 
-def get_terms_freq_from_content(content: str) -> dict[str, int]:
+async def get_terms_freq(content: str, term_freq: Counter, lock: asyncio.Lock) -> None:
     normalized_content = normalize_text(content)
     terms = normalized_content.split()
-    return Counter(terms)
+    async with lock:
+        term_freq.update(terms)
 
 
 async def calculate_idf_score(session: Session, total_posts: int, idf: IDF):
@@ -24,25 +25,25 @@ async def calculate_idfs(session: Session):
     posts_db = session.exec(select(Post)).all()
     total_posts = len(posts_db)
     if posts_db is None:
-        # TODO: Exception
+        print("No posts found.")
         return None
 
-    count = 1
+    tasks = []
+    terms_freq = Counter()
+    lock = asyncio.Lock()
     for post in posts_db:
-        logging.info(f"Calculating IDF for post {count}/{total_posts}")
-        terms_freq = get_terms_freq_from_content(post.content)
-        for term, freq in terms_freq.items():
-            statement = select(IDF).where(IDF.term == term)
-            idf = session.exec(statement).first()
-            if idf is not None:
-                idf.frequency += freq
-            else:
-                idf = IDF(term=term, frequency=freq)
+        logging.info("Calculating terms frequency")
+        task = get_terms_freq(post.content, terms_freq, lock)
+        tasks.append(task)
 
-            session.add(idf)
+    await asyncio.gather(*tasks)
 
-        session.commit()
-        count += 1
+    for term, freq in terms_freq.items():
+        logging.info(f"Adding term {term} to the database")
+        idf = IDF(term=term, frequency=freq)
+        session.add(idf)
+
+    session.commit()
 
     logging.info("Calculating IDF scores")
     idfs_db = session.exec(select(IDF)).all()
