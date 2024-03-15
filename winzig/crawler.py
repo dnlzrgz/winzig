@@ -29,6 +29,9 @@ async def fetch_content(client: httpx.AsyncClient, url: str) -> bytes | None:
     except httpx.HTTPError as e:
         logging.error(f"Got HTTP error for '{url}': {e}")
         return None
+    except ValueError as e:
+        logging.error(f"Got exception while fetching'{url}': {e}")
+        return None
 
 
 def clean_content(url: str, html: bytes) -> str | None:
