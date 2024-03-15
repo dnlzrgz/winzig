@@ -1,6 +1,6 @@
-from collections import defaultdict
+from functools import cached_property
 from sqlmodel import Session, select
-from winzig.models import IDF
+from winzig.models import Occurrence, Term, Post
 from winzig.utils import normalize_text, update_url_scores
 
 
@@ -11,30 +11,18 @@ class SearchEngine:
         k1: float = 1.5,
         b: float = 0.75,
     ) -> None:
-        self._idx: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-        self._docs: dict[str, str] = {}
         self.k1 = k1
         self.b = b
         self.session = session
 
-    @property
-    def post(self) -> list[str]:
-        return list(self._docs.keys())
-
-    @property
-    def num_of_docs(self) -> int:
-        return len(self._docs)
-
-    @property
+    @cached_property
     def avdl(self) -> float:
-        if not hasattr(self, "_avdl"):
-            self._avdl = (
-                sum(self.num_of_docs for d in self._docs.values()) / self.num_of_docs
-            )
-        return self._avdl
+        posts_db = self.session.exec(select(Post)).all()
+        total_content_length = sum(len(post.content) for post in posts_db)
+        return total_content_length / len(posts_db)
 
-    def get_idf(self, kw: str) -> float:
-        statement = select(IDF).where(IDF.term == kw)
+    def get_tf_idf(self, kw: str) -> float:
+        statement = select(Term).where(Term.term == kw)
         idf_db = self.session.exec(statement).first()
         if not idf_db:
             return 0.0
@@ -42,17 +30,23 @@ class SearchEngine:
         return idf_db.score
 
     def bm25(self, kw: str) -> dict[str, float]:
-        result = {}
-        idf_score = self.get_idf(kw)
+        results = {}
+        tf_idf_score = self.get_tf_idf(kw)
         avldl = self.avdl
-        for url, freq in self.get_urls(kw).items():
-            numerator = freq * (self.k1 + 1)
-            denominator = freq + self.k1 * (
-                1 - self.b + self.b * len(self._docs[url]) / avldl
+        occurrences = self.session.exec(
+            select(Occurrence, Post).join(Post).join(Term).where(Term.term == kw)
+        ).all()
+        for occurrence, post in occurrences:
+            url = occurrence.post.url
+            term_db = self.session.exec(select(Term).where(Term.term == kw)).first()
+            term_freq = term_db.frequency
+            numerator = term_freq * (self.k1 + 1)
+            denominator = term_freq + self.k1 * (
+                1 - self.b + self.b * len(post.content) / avldl
             )
 
-            result[url] = idf_score * numerator / denominator
-        return result
+            results[url] = tf_idf_score * numerator / denominator
+        return results
 
     def search(self, query: str) -> dict[str, float]:
         keywords = normalize_text(query).split(" ")
@@ -62,19 +56,3 @@ class SearchEngine:
             url_scores = update_url_scores(url_scores, kw_urls_scores)
 
         return url_scores
-
-    def index(self, url: str, content: str) -> None:
-        self._docs[url] = content
-        words = normalize_text(content).split(" ")
-        for word in words:
-            self._idx[word][url] += 1
-        if hasattr(self, "_avdl"):
-            del self._avdl
-
-    def bulk_index(self, docs: list[tuple[str, str]]):
-        for url, content in docs:
-            self.index(url, content)
-
-    def get_urls(self, kw: str) -> dict[str, int]:
-        normalized_kw = normalize_text(kw)
-        return self._idx[normalized_kw]
