@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "winzig"
-version = "0.1.5"
+version = "0.1.7"
 description = "A tiny search engine for personal use."
 authors = ["dnlzrgz <24715931+dnlzrgz@users.noreply.github.com>"]
 license = "MIT"
@@ -17,12 +17,14 @@ selectolax = "^0.3.20"
 rich = "^13.7.1"
 sqlmodel = "^0.0.16"
 click = "^8.1.7"
+textual = "^0.52.1"
 
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.3.2"
 pre-commit = "^3.6.2"
 commitizen = "^3.18.0"
+textual-dev = "^1.5.1"
 
 [build-system]
 requires = ["poetry-core"]

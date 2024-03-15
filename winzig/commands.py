@@ -8,12 +8,13 @@ from winzig.idf import recalculate_idfs
 from winzig.models import Post
 from winzig.crawler import crawl
 from winzig.search_engine import SearchEngine
+from winzig.tui import TuiApp
 from winzig.utils import get_top_urls
 
 
 @click.command(
     name="crawl",
-    help="Crawl links.",
+    help="Crawl links and store results.",
 )
 @click.option(
     "-f",
@@ -21,7 +22,6 @@ from winzig.utils import get_top_urls
     type=Path,
     default=None,
     help="Path to the file containing the URLs to crawl. If this file is not provided, the crawler will load URLs from the database.",
-    show_default=True,
 )
 @click.option(
     "--verbose",
@@ -38,6 +38,34 @@ def crawl_links(ctx, file: Path, verbose: bool):
     with Session(ctx.obj["engine"]) as session:
         asyncio.run(crawl(session, file))
         asyncio.run(recalculate_idfs(session))
+
+
+@click.command(
+    name="tui",
+    help="Start tui for search engine.",
+)
+@click.pass_context
+def start_tui(ctx):
+    with Session(ctx.obj["engine"]) as session:
+        search_engine = SearchEngine(session)
+        posts = []
+        try:
+            stmt = select(Post)
+            posts = session.exec(stmt).all()
+        except exc.SQLAlchemyError as e:
+            print(f"Problem with the database: {e}")
+            return
+
+        if len(posts) == 0:
+            print(
+                "No posts found in the database. You may need to crawl some links first."
+            )
+            return
+
+        data = [(post.url, post.content) for post in posts]
+        search_engine.bulk_index(data)
+        tui_app = TuiApp(search_engine)
+        tui_app.run()
 
 
 @click.command(

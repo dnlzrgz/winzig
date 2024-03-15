@@ -115,11 +115,20 @@ By default the number of results is `5` but you can change this by using the `-n
 winzig search --query="async databases with sqlalchemy" -n 10
 ```
 
+### TUI
+
+If you prefer you can use the TUI to interact with the search engine. The TUI is its early stage but it offers basic functionality and faster search experiences compared to the `search` command since the content is indexed once and not each time you want to search something.
+
+```bash
+winzig tui
+```
+
 ## Roadmap
 
+- [x] Add a TUI using [`textual`](https://textual.textualize.io/).  
+- [ ] Improve TUI.
 - [ ] Add tests.  
 - [ ] Improving IDF calculation process.  
-- [ ] Add a TUI using [`textual`](https://textual.textualize.io/).  
 - [ ] Add documents like markdown or plain text files.  
 - [ ] Add support for PDFs and other formats.  
 - [ ] Make the CLI nicer.  

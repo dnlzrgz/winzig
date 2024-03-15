@@ -1,0 +1,10 @@
+Input {
+  height: 3;
+  margin: 3;
+}
+
+#results-container {
+  background: $boost;
+  padding-top: 3;
+  padding-bottom: 6;
+}

@@ -5,7 +5,12 @@ from winzig.utils import normalize_text, update_url_scores
 
 
 class SearchEngine:
-    def __init__(self, session: Session, k1: float = 1.5, b: float = 0.75) -> None:
+    def __init__(
+        self,
+        session: Session,
+        k1: float = 1.5,
+        b: float = 0.75,
+    ) -> None:
         self._idx: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
         self._docs: dict[str, str] = {}
         self.k1 = k1
