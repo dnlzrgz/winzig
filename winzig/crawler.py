@@ -8,7 +8,7 @@ from selectolax.parser import HTMLParser
 from winzig.models import Feed, Post
 
 headers = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     "Accept-Encoding": "gzip, deflate",
     "Accept-Language": "en-GB,en;q=0.6",
@@ -88,26 +88,31 @@ async def process_post(
             session.add(post_obj)
 
 
+def save_feeds_from_file(session: Session, feed_file: Path | None):
+    if not feed_file:
+        logging.debug("No file specified.")
+        return
+
+    if not feed_file.exists():
+        print(f"File {feed_file} does not exist. Please specify a correct file.")
+        return
+
+    logging.debug(f"Reading file {feed_file}")
+    with open(feed_file, "r") as f:
+        for line in f:
+            url = line.strip()
+            feed_db = session.exec(select(Feed).where(Feed.url == url)).first()
+            if not feed_db:
+                feed = Feed(url=url)
+                session.add(feed)
+
+        session.commit()
+
+
 async def crawl(session: Session, feed_file: Path | None = None):
-    if feed_file:
-        if not feed_file.exists():
-            print(
-                f"File {feed_file} does not exist. Please if you want to extract feed from a file specify a correct file."
-            )
+    save_feeds_from_file(session, feed_file)
 
-        else:
-            logging.debug(f"Reading file {feed_file}")
-            with open(feed_file, "r") as f:
-                for line in f:
-                    url = line.strip()
-                    feed_db = session.exec(select(Feed).where(Feed.url == url)).first()
-                    if not feed_db:
-                        feed = Feed(url=url)
-                        session.add(feed)
-
-                    session.commit()
-
-    logging.debug("Loading feeds")
+    logging.debug("Loading feeds from the database.")
     feeds = session.exec(select(Feed)).all()
     if not feeds:
         print("No feeds found. Please add feeds before crawling.")
