@@ -21,9 +21,10 @@ This project started as a "manual" clone of the `microsearch` project to be able
 ## Features
 
 - **Fetch only what you need**: winzig optimizes data retrieval by excluding content that is already in the database, making sure that only new content is fetched after the initial crawl.  
-- **Async, Async, Async**: crawling as well as the posterior data processing operate asynchronously, resulting in lightning-fast performance.
-- **Efficient data management with SQLite**: everything is kept in a SQLite database in your home directory.  
-- **Easy to use**: searching is just one command; the setup is handled after the initial data fetching.
+- **Async, Async, Async**: Crawling as well as the posterior data processing operates asynchronously, resulting in lightning-fast performance.  
+- **Efficient data management with SQLite**: Everything is kept in a SQLite database in your home directory.  
+- **Easy to use**: The CLI provides simple commands for crawling and searching effortlessly.  
+- **Enhanced search speed**: The post-crawling processing ensures near-instantaneous search results.  
 
 ## Installation
 
@@ -93,13 +94,13 @@ The first time you initiate a crawl, you'll need a file containing a list of fee
 ### Crawling
 
 The following command starts the crawler. Initially, it extracts the URLs from the specified file and saves them to the database. Then, it proceeds to fetch all the posts listed on each of these feeds. The `--verbose` flag signals that the command will provide detailed output, including HTTP errors.  
-Once all the posts have been crawled, it proceeds to calculate the Inverse Document Frequency (IDF) for all the terms in the database. IDF is a statistical measure used in information retrieval to determine the importance of a term within a collection of documents. Basically, doing this now makes the search faster.
+After finishing the crawling process, the frequencies of all terms within the saved posts will be calculated. Additionally, the inverted index will also be built at this stage.
 
 ```bash
 winzig crawl --file="./urls" --verbose
 ```
 
-> While the crawling is a pretty straightforward process, the method used for calculating the IDFs might lead to unexpectedly high memory usage due to how the terms are being hold into memory before adding them to the database. So monitoring the memory during this process might be a good idea.
+> The method used for getting the frequency of each term may result in unexpectedly high memory usage. This is primarily due to how the terms are temporarily stored in memory before being added to the database. So if you are working with a very high number of feeds and, consequently, posts, it is advisable to monitor memory usage closely during this process.
 
 ### Searching
 
