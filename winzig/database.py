@@ -1,16 +1,19 @@
-from sqlmodel import SQLModel, create_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from winzig.models import Base
 
 
-def get_engine(sqlite_url: str, echo: bool = False):
+def get_engine(sqlite_url: str) -> AsyncEngine:
     connect_args = {"check_same_thread": False}
-    engine = create_engine(
+    engine = create_async_engine(
         sqlite_url,
-        echo=echo,
+        echo=True,
+        future=True,
         connect_args=connect_args,
     )
 
     return engine
 
 
-def create_db_and_tables(engine):
-    SQLModel.metadata.create_all(engine)
+async def create_db_and_tables(engine):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)

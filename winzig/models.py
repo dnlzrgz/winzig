@@ -1,39 +1,53 @@
-from typing import List, Optional
-from sqlmodel import Field, SQLModel, Relationship
+from typing import List
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.ext.asyncio import AsyncAttrs
 
 
-class Feed(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    url: str = Field(index=True)
-
-    posts: List["Post"] = Relationship(back_populates="feed")
+class Base(AsyncAttrs, DeclarativeBase):
+    pass
 
 
-class Post(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    url: str = Field(index=True)
-    content: str
+class Feed(Base):
+    __tablename__ = "feeds"
 
-    feed_id: Optional[int] = Field(default=None, foreign_key="feed.id")
-    feed: Optional[Feed] = Relationship(back_populates="posts")
+    id: Mapped[int] = mapped_column(primary_key=True)
+    url: Mapped[str] = mapped_column(index=True)
 
-    occurrences: list["Occurrence"] = Relationship(back_populates="post")
+    posts: Mapped[List["Post"]] = relationship(back_populates="feed")
 
 
-class Term(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    term: str = Field(index=True)
-    score: float = Field(default=0.0)
-    frequency: int = Field(default=0)
+class Post(Base):
+    __tablename__ = "posts"
 
-    occurrences: list["Occurrence"] = Relationship(back_populates="term")
+    id: Mapped[int] = mapped_column(primary_key=True)
+    url: Mapped[str] = mapped_column(index=True)
+    content: Mapped[str]
+
+    feed_id: Mapped[int] = mapped_column(ForeignKey("feeds.id"))
+    feed: Mapped[Feed] = relationship(back_populates="posts")
+
+    occurrences: Mapped[List["Occurrence"]] = relationship(back_populates="post")
 
 
-class Occurrence(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+class Term(Base):
+    __tablename__ = "terms"
 
-    term_id: int = Field(foreign_key="term.id")
-    term: Term = Relationship(back_populates="occurrences")
+    id: Mapped[int] = mapped_column(primary_key=True)
+    term: Mapped[str] = mapped_column(index=True)
+    score: Mapped[float] = mapped_column(default=0.0)
+    frequency: Mapped[int] = mapped_column(default=0)
 
-    post_id: int = Field(foreign_key="post.id")
-    post: Post = Relationship(back_populates="occurrences")
+    occurrences: Mapped[List["Occurrence"]] = relationship(back_populates="term")
+
+
+class Occurrence(Base):
+    __tablename__ = "occurrences"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    term_id: Mapped[int] = mapped_column(ForeignKey("terms.id"))
+    term: Mapped[Term] = relationship(back_populates="occurrences")
+
+    post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"))
+    post: Mapped[Post] = relationship(back_populates="occurrences")
