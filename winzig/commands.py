@@ -2,11 +2,11 @@ import asyncio
 import logging
 from pathlib import Path
 import click
-from sqlmodel import Session
-from winzig.tf_idf import recalculate_tf_idf
+from sqlalchemy.ext.asyncio import AsyncSession
 from winzig.crawler import crawl
 from winzig.search_engine import SearchEngine
-from winzig.tui import TuiApp
+
+# from winzig.tui import TuiApp
 from winzig.utils import get_top_urls
 
 
@@ -33,9 +33,13 @@ def crawl_links(ctx, file: Path, verbose: bool):
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    with Session(ctx.obj["engine"]) as session:
-        asyncio.run(crawl(session, file))
-        asyncio.run(recalculate_tf_idf(session))
+    asyncio.run(_crawl_links(ctx.obj["engine"], file))
+
+
+async def _crawl_links(engine, file: Path):
+    async with AsyncSession(engine) as session:
+        await crawl(session, file)
+        # await recalculate_tf_idf(session)
 
 
 @click.command(
@@ -44,10 +48,12 @@ def crawl_links(ctx, file: Path, verbose: bool):
 )
 @click.pass_context
 def start_tui(ctx):
-    with Session(ctx.obj["engine"]) as session:
-        search_engine = SearchEngine(session)
-        tui_app = TuiApp(search_engine)
-        tui_app.run()
+    # with AsyncSession(ctx.obj["engine"]) as session:
+    # search_engine = SearchEngine(session)
+    # tui_app = TuiApp(search_engine)
+    # tui_app.run()
+    # TODO: pass engine, let TUI handle session.
+    pass
 
 
 @click.command(
@@ -95,7 +101,11 @@ def search_links(ctx, query: str, k1: float, b: float, n: int, verbose: bool):
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    with Session(ctx.obj["engine"]) as session:
+    asyncio.run(_search_links(ctx.obj["engine"], query, k1, b, n))
+
+
+async def _search_links(engine, query: str, k1: float, b: float, n: int):
+    async with AsyncSession(engine) as session:
         search_engine = SearchEngine(session, k1=k1, b=b)
         search_results = search_engine.search(query)
         search_results = get_top_urls(search_results, n)

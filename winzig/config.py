@@ -14,9 +14,9 @@ class Config:
 
     def _initialize(self):
         if os.getenv("DEVELOPMENT"):
-            self.sqlite_url = "sqlite:///sqlite.db"
+            self.sqlite_url = "sqlite+aiosqlite:///sqlite.db"
             return
 
         self.winzig_dir = Path.home() / ".winzig"
         self.winzig_dir.mkdir(parents=True, exist_ok=True)
-        self.sqlite_url = f"sqlite:///{self.winzig_dir / 'sqlite.db'}"
+        self.sqlite_url = f"sqlite+aiosqlite:///{self.winzig_dir / 'sqlite.db'}"

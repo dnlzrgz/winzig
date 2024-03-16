@@ -3,7 +3,8 @@ from pathlib import Path
 import logging
 import httpx
 import feedparser
-from sqlmodel import Session, select
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from selectolax.parser import HTMLParser
 from winzig.models import Feed, Post
 
@@ -28,10 +29,10 @@ async def fetch_content(client: httpx.AsyncClient, url: str) -> bytes | None:
             return await response.aread()
     except httpx.HTTPError as e:
         logging.error(f"Got HTTP error for '{url}': {e}")
-        return None
     except ValueError as e:
-        logging.error(f"Got exception while fetching'{url}': {e}")
-        return None
+        logging.error(f"Got exception while fetching '{url}': {e}")
+
+    return None
 
 
 def clean_content(url: str, html: bytes) -> str | None:
@@ -54,13 +55,14 @@ def clean_content(url: str, html: bytes) -> str | None:
         return None
 
 
-async def get_posts_from_feed(session: Session, id: int, url: str) -> list[str]:
+async def get_posts_from_feed(session: AsyncSession, id: int, url: str) -> list[str]:
     logging.debug(f"Getting posts from feed '{url}'")
 
     try:
         feed = feedparser.parse(url)
         statement = select(Post).where(Post.feed_id == id)
-        results = session.exec(statement).all()
+        results = await session.execute(statement)
+        results = results.scalars()
         posts_db_urls = {post.url for post in results}
 
         return [entry.link for entry in feed.entries if entry.link not in posts_db_urls]
@@ -70,7 +72,7 @@ async def get_posts_from_feed(session: Session, id: int, url: str) -> list[str]:
 
 
 async def process_post(
-    session: Session,
+    session: AsyncSession,
     client: httpx.AsyncClient,
     feed: Feed,
     post: str,
@@ -78,20 +80,22 @@ async def process_post(
     logging.debug(f"Processing post '{post}'")
 
     response_text = await fetch_content(client, post)
-    if response_text:
-        cleaned_content = clean_content(post, response_text)
-        if cleaned_content:
-            post_obj = Post(
-                url=post,
-                content=cleaned_content,
-                feed=feed,
-            )
+    if not response_text:
+        return
 
-            logging.debug(f"Saving post '{post}' to the database")
-            session.add(post_obj)
+    cleaned_content = clean_content(post, response_text)
+    if cleaned_content:
+        post_obj = Post(
+            url=post,
+            content=cleaned_content,
+            feed=feed,
+        )
+
+        logging.debug(f"Saving post '{post}' to the database")
+        session.add(post_obj)
 
 
-def save_feeds_from_file(session: Session, feed_file: Path | None):
+async def save_feeds_from_file(session: AsyncSession, feed_file: Path | None):
     if not feed_file:
         logging.debug("No file specified.")
         return
@@ -104,19 +108,19 @@ def save_feeds_from_file(session: Session, feed_file: Path | None):
     with open(feed_file, "r") as f:
         for line in f:
             url = line.strip()
-            feed_db = session.exec(select(Feed).where(Feed.url == url)).first()
-            if not feed_db:
-                feed = Feed(url=url)
-                session.add(feed)
+            feed = await session.execute(select(Feed).where(Feed.url == url))
+            feed = feed.first()
+            if not feed:
+                new_feed = Feed(url=url)
+                session.add(new_feed)
 
-        session.commit()
 
-
-async def crawl(session: Session, feed_file: Path | None = None):
-    save_feeds_from_file(session, feed_file)
+async def crawl(session: AsyncSession, feed_file: Path | None = None):
+    await save_feeds_from_file(session, feed_file)
 
     logging.debug("Loading feeds from the database.")
-    feeds = session.exec(select(Feed)).all()
+    feeds = await session.execute(select(Feed))
+    feeds = feeds.scalars()
     if not feeds:
         print("No feeds found. Please add feeds before crawling.")
         return
@@ -127,4 +131,4 @@ async def crawl(session: Session, feed_file: Path | None = None):
             tasks = [process_post(session, client, feed, post) for post in posts]
 
             await asyncio.gather(*tasks)
-            session.commit()
+        await session.commit()

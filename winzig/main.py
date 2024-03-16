@@ -1,8 +1,9 @@
+import asyncio
 import logging
 import click
-from winzig.database import create_db_and_tables, get_engine
 from winzig.config import Config
-from winzig.commands import crawl_links, search_links, start_tui
+from winzig.database import create_db_and_tables, get_engine
+from winzig.commands import crawl_links
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -18,13 +19,13 @@ def cli(ctx):
         ctx.obj = {}
 
     engine = get_engine(Config().sqlite_url)
-    create_db_and_tables(engine)
+    asyncio.run(create_db_and_tables(engine))
     ctx.obj["engine"] = engine
 
 
 cli.add_command(crawl_links)
-cli.add_command(search_links)
-cli.add_command(start_tui)
+# cli.add_command(search_links)
+# cli.add_command(start_tui)
 
 if __name__ == "__main__":
     cli()
