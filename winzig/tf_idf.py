@@ -1,84 +1,59 @@
 import asyncio
 import logging
 from math import log
-from collections import Counter
-from sqlmodel import Session, select
-from sqlalchemy import delete
-from winzig.models import Post, Term, Occurrence
-from winzig.utils import normalize_text
+from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from winzig.models import Post, Keyword, Occurrence
+
+# TODO: get occurrences (occurrences are only added when a new post is added to the database)
+# TODO: check occurrences without a keyword.
+#   TODO: if keyword doesn't exist, calc and add it.
+#   TODO: if keyword does exist, add it.
+# TODO: recalculate scores.
 
 
-async def get_occurrences_per_post(session: Session, post: Post):
-    terms = Counter(normalize_text(post.content).split(" "))
-    for term in terms:
-        statement = select(Term).where(Term.term == term)
-        term_db = session.exec(statement).first()
-        if not term_db:
-            continue
+async def calculate_score(
+    session: AsyncSession,
+    kw: str,
+    total_posts: int,
+    frequency: int,
+):
+    score = log(total_posts / (frequency + 1))
+    keyword = Keyword(
+        keyword=kw,
+        score=score,
+        frequency=frequency,
+    )
 
-        occurrence = Occurrence(term_id=term_db.id, post_id=post.id)
-        session.add(occurrence)
-
-
-async def get_terms_freq(content: str, term_freq: Counter, lock: asyncio.Lock) -> None:
-    normalized_content = normalize_text(content)
-    terms = normalized_content.split()
-    async with lock:
-        term_freq.update(terms)
+    session.add(keyword)
 
 
-async def calculate_score(session: Session, total_posts: int, term: str, freq: int):
-    score = log(total_posts / (freq + 1))
-    term_db = Term(term=term, score=score, frequency=freq)
-    session.add(term_db)
-
-
-async def calculate_tf_idfs(session: Session):
-    logging.info("Getting posts from the database")
-    posts_db = session.exec(select(Post)).all()
-    if not posts_db:
+async def calculate_tf_idfs(session: AsyncSession):
+    statement = select(func.count()).select_from(Post)
+    result = await session.execute(statement)
+    total_posts = result.scalar()
+    if not total_posts:
         print("No posts found.")
-        return None
+        return
 
-    logging.info("Getting terms frequency")
-    tasks = []
-    # TODO: check methods to solve tf-idf memory consumption
-    terms_freq = Counter()
-    lock = asyncio.Lock()
-    for post in posts_db:
-        task = get_terms_freq(post.content, terms_freq, lock)
-        tasks.append(task)
-
+    statement = select(Occurrence.word, func.sum(Occurrence.count)).group_by(
+        Occurrence.word
+    )
+    results = await session.execute(statement)
+    tasks = [calculate_score(session, row[0], total_posts, row[1]) for row in results]
     await asyncio.gather(*tasks)
-
-    logging.info("Calculating TF-IDF")
-    total_posts = len(posts_db)
-    tasks = []
-    for term, freq in terms_freq.items():
-        tasks.append(calculate_score(session, total_posts, term, freq))
-
-    await asyncio.gather(*tasks)
-    session.commit()
-
-    logging.info("Getting occurences of terms per post")
-    tasks = []
-    for post in posts_db:
-        tasks.append(get_occurrences_per_post(session, post))
-
-    await asyncio.gather(*tasks)
-    session.commit()
+    await session.commit()
 
 
-async def recalculate_tf_idf(session: Session):
-    statement = delete(Term)
-    session.exec(statement)
-    session.commit()
-    logging.info("Previous TF-IDF scores deleted.")
+async def delete_old_scores(session: AsyncSession):
+    statement = delete(Keyword)
+    await session.execute(statement)
+    await session.commit()
 
-    statement = delete(Occurrence)
-    session.exec(statement)
-    session.commit()
-    logging.info("Previous terms occurrences deleted.")
 
-    logging.info("Recalculating TF-IDF scores and getting occurrences.")
+async def recalculate_tf_idf(session: AsyncSession):
+    logging.debug("Deleting previous TF-IDF scores.")
+    await delete_old_scores(session)
+    logging.debug("Previous TF-IDF scores deleted.")
+    logging.info("Recalculating TF-IDF scores.")
     await calculate_tf_idfs(session)

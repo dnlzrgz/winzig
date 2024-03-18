@@ -1,12 +1,14 @@
 import asyncio
-from pathlib import Path
 import logging
+from collections import Counter
+from pathlib import Path
 import httpx
 import feedparser
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from selectolax.parser import HTMLParser
-from winzig.models import Feed, Post
+from winzig.models import Feed, Occurrence, Post
+from winzig.utils import normalize_text
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
@@ -75,24 +77,33 @@ async def process_post(
     session: AsyncSession,
     client: httpx.AsyncClient,
     feed: Feed,
-    post: str,
+    url: str,
 ) -> None:
-    logging.debug(f"Processing post '{post}'")
+    logging.debug(f"Processing post '{url}'")
 
-    response_text = await fetch_content(client, post)
+    response_text = await fetch_content(client, url)
     if not response_text:
         return
 
-    cleaned_content = clean_content(post, response_text)
-    if cleaned_content:
-        post_obj = Post(
-            url=post,
-            content=cleaned_content,
-            feed=feed,
-        )
+    cleaned_content = clean_content(url, response_text)
+    if not cleaned_content:
+        return
 
-        logging.debug(f"Saving post '{post}' to the database")
-        session.add(post_obj)
+    post = Post(
+        url=url,
+        content=cleaned_content,
+        feed=feed,
+    )
+
+    logging.debug(f"Saving post '{url}' to the database")
+    session.add(post)
+
+    logging.debug(f"Saving terms in post '{url}' to the database")
+    words = Counter(normalize_text(post.content).split(" "))
+    occurrences = [
+        Occurrence(word=word, count=count, post=post) for word, count in words.items()
+    ]
+    session.add_all(occurrences)
 
 
 async def save_feeds_from_file(session: AsyncSession, feed_file: Path | None):
@@ -114,6 +125,8 @@ async def save_feeds_from_file(session: AsyncSession, feed_file: Path | None):
                 new_feed = Feed(url=url)
                 session.add(new_feed)
 
+        await session.commit()
+
 
 async def crawl(session: AsyncSession, feed_file: Path | None = None):
     await save_feeds_from_file(session, feed_file)
@@ -131,4 +144,5 @@ async def crawl(session: AsyncSession, feed_file: Path | None = None):
             tasks = [process_post(session, client, feed, post) for post in posts]
 
             await asyncio.gather(*tasks)
-        await session.commit()
+
+    await session.commit()

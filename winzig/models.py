@@ -30,24 +30,21 @@ class Post(Base):
     occurrences: Mapped[List["Occurrence"]] = relationship(back_populates="post")
 
 
-class Term(Base):
-    __tablename__ = "terms"
+class Keyword(Base):
+    __tablename__ = "keywords"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    term: Mapped[str] = mapped_column(index=True)
+    keyword: Mapped[str] = mapped_column(index=True)
     score: Mapped[float] = mapped_column(default=0.0)
     frequency: Mapped[int] = mapped_column(default=0)
-
-    occurrences: Mapped[List["Occurrence"]] = relationship(back_populates="term")
 
 
 class Occurrence(Base):
     __tablename__ = "occurrences"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-
-    term_id: Mapped[int] = mapped_column(ForeignKey("terms.id"))
-    term: Mapped[Term] = relationship(back_populates="occurrences")
+    word: Mapped[str] = mapped_column(index=True)
+    count: Mapped[int] = mapped_column(default=0)
 
     post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"))
     post: Mapped[Post] = relationship(back_populates="occurrences")
