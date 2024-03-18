@@ -3,13 +3,14 @@ import logging
 import click
 from winzig.config import Config
 from winzig.database import create_db_and_tables, get_engine
-from winzig.commands import crawl_links
+from winzig.commands import crawl_links, search_links, start_tui
 
 logging.basicConfig(
     level=logging.ERROR,
     format="%(asctime)s %(levelname)s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S %z",
 )
+logger = logging.getLogger(__name__)
 
 
 @click.group()
@@ -24,8 +25,8 @@ def cli(ctx):
 
 
 cli.add_command(crawl_links)
-# cli.add_command(search_links)
-# cli.add_command(start_tui)
+cli.add_command(search_links)
+cli.add_command(start_tui)
 
 if __name__ == "__main__":
     cli()

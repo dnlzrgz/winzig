@@ -1,4 +1,7 @@
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from winzig.models import Post, Occurrence, Keyword
+from winzig.utils import update_url_scores, normalize_text
 
 
 class SearchEngine:
@@ -12,48 +15,60 @@ class SearchEngine:
         self.b = b
         self.session = session
 
-    # @cached_property
-    # async def avdl(self) -> float:
-    #     posts = await self.session.execute(select(Post))
-    #     posts = posts.scalars()
-    #
-    #     total_content_length = sum(len(post.content) for post in posts)
-    #     return total_content_length / len(posts)
-    #
-    # def get_tf_idf(self, kw: str) -> float:
-    #     statement = select(Term).where(Term.term == kw)
-    #     idf_db = self.session.exec(statement).first()
-    #     if not idf_db:
-    #         return 0.0
-    #
-    #     return idf_db.score
-    #
-    # def bm25(self, kw: str) -> dict[str, float]:
-    #     results = {}
-    #     tf_idf_score = self.get_tf_idf(kw)
-    #     avldl = self.avdl
-    #     occurrences = self.session.exec(
-    #         select(Occurrence, Post).join(Post).join(Term).where(Term.term == kw)
-    #     ).all()
-    #     for occurrence, post in occurrences:
-    #         url = occurrence.post.url
-    #         term_db = self.session.exec(select(Term).where(Term.term == kw)).first()
-    #         term_freq = term_db.frequency
-    #         numerator = term_freq * (self.k1 + 1)
-    #         denominator = term_freq + self.k1 * (
-    #             1 - self.b + self.b * len(post.content) / avldl
-    #         )
-    #
-    #         results[url] = tf_idf_score * numerator / denominator
-    #     return results
-    #
-    def search(self, query: str) -> dict[str, float]:
-        pass
+    async def avdl(self) -> float | None:
+        statement = select(func.count()).select_from(Post)
+        result = await self.session.execute(statement)
+        total_posts = result.scalar()
+        if not total_posts:
+            # TODO: Handle better
+            print("No posts found.")
+            return None
 
-    #     keywords = normalize_text(query).split(" ")
-    #     url_scores: dict[str, float] = {}
-    #     for kw in keywords:
-    #         kw_urls_scores = self.bm25(kw)
-    #         url_scores = update_url_scores(url_scores, kw_urls_scores)
-    #
-    #     return url_scores
+        statement = select(func.sum(Post.length)).select_from(Post)
+        result = await self.session.execute(statement)
+        total_length = result.scalar()
+        if not total_length:
+            # TODO: Handle better
+            print("Error while calculating the total length.")
+            return None
+
+        return total_length / total_posts
+
+    async def get_kw_score(self, kw: str) -> float:
+        statement = select(Keyword).where(Keyword.keyword == kw)
+        results = await self.session.execute(statement)
+        keyword = results.scalar()
+        if not keyword:
+            return 0.0
+
+        return keyword.score
+
+    async def bm25(self, kw: str) -> dict[str, float]:
+        avdl = await self.avdl()
+        results = await self.session.execute(
+            select(Occurrence.count, Post.url, Post.length)
+            .join(Post)
+            .join(Keyword)
+            .where(Keyword.keyword == kw)
+        )
+        occurrences = results.fetchall()
+
+        search_results = {}
+        for count, url, length in occurrences:
+            kw_score = await self.get_kw_score(kw)
+            numerator = count * (self.k1 + 1)
+            denominator = count + self.k1 * (1 - self.b + self.b * (length / avdl))
+
+            score = kw_score * numerator / denominator
+            search_results[url] = score
+
+        return search_results
+
+    async def search(self, query: str) -> dict[str, float]:
+        keywords = normalize_text(query).split(" ")
+        url_scores: dict[str, float] = {}
+        for kw in keywords:
+            kw_urls_scores = await self.bm25(kw)
+            url_scores = update_url_scores(url_scores, kw_urls_scores)
+
+        return url_scores

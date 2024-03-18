@@ -31,7 +31,7 @@ class TuiApp(App):
 
     @work(exclusive=True)
     async def search(self, query: str) -> None:
-        search_results = self.search_engine.search(query)
+        search_results = await self.search_engine.search(query)
         search_results = get_top_urls(search_results, 10)
 
         markdown = self.make_word_markdown(search_results)
