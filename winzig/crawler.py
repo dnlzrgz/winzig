@@ -93,6 +93,7 @@ async def process_post(
         url=url,
         content=cleaned_content,
         feed=feed,
+        length=len(cleaned_content),
     )
 
     logging.debug(f"Saving post '{url}' to the database")
@@ -101,7 +102,9 @@ async def process_post(
     logging.debug(f"Saving terms in post '{url}' to the database")
     words = Counter(normalize_text(post.content).split(" "))
     occurrences = [
-        Occurrence(word=word, count=count, post=post) for word, count in words.items()
+        Occurrence(word=word, count=count, post=post)
+        for word, count in words.items()
+        if len(word) > 1
     ]
     session.add_all(occurrences)
 

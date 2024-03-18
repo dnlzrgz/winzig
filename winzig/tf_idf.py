@@ -5,12 +5,6 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from winzig.models import Post, Keyword, Occurrence
 
-# TODO: get occurrences (occurrences are only added when a new post is added to the database)
-# TODO: check occurrences without a keyword.
-#   TODO: if keyword doesn't exist, calc and add it.
-#   TODO: if keyword does exist, add it.
-# TODO: recalculate scores.
-
 
 async def calculate_score(
     session: AsyncSession,
@@ -18,11 +12,14 @@ async def calculate_score(
     total_posts: int,
     frequency: int,
 ):
+    results = await session.execute(select(Occurrence).filter(Occurrence.word == kw))
+    occurrences = results.scalars().all()
     score = log(total_posts / (frequency + 1))
     keyword = Keyword(
         keyword=kw,
         score=score,
         frequency=frequency,
+        occurrences=occurrences,
     )
 
     session.add(keyword)

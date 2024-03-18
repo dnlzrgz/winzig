@@ -2,7 +2,7 @@ import string
 import emoji
 
 translation_table = str.maketrans(
-    {char: " " for char in string.punctuation + "“”’‘¶■▲▼"}
+    {char: " " for char in string.punctuation + "“”’‘¶■▲▼└│─√©"}
 )
 
 
