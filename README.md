@@ -4,7 +4,7 @@
 
 winzig is a tiny search engine designed for personal use that enables users to download and search for posts from their favourite feeds.
 
-This project is heavily inspired by the [microsearch](https://github.com/alexmolas/microsearch) project and the [article](https://www.alexmolas.com/2024/02/05/a-search-engine-in-80-lines.html) about it.
+This project was heavily inspired by the [microsearch](https://github.com/alexmolas/microsearch) project and this [article](https://www.alexmolas.com/2024/02/05/a-search-engine-in-80-lines.html) about it.
 
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
@@ -16,11 +16,11 @@ This project is heavily inspired by the [microsearch](https://github.com/alexmol
 
 For quite some time, I've been contemplating the idea of creating my own personal search engine. I wanted a tool that could facilitate searching through my personal notes, books, articles, podcast transcripts, and anything else I wished to include. However, I was unsure of how or where to begin until I discovered the microsearch project, which reignited the momentum for the idea in my mind.  
 
-This project started as a "manual" clone of the `microsearch` project to be able to better understand how some things worked. Later, I decided to start implementing some changes like using [`httpx`](https://www.python-httpx.org/) instead of [`aiohttp`](https://docs.aiohttp.org/en/stable/index.html) or keeping all the data in a SQLite database.  
+This project started as a clone of the `microsearch` project to be able to better understand how some things worked. Later, I decided to start implementing some changes like keeping all the data in a SQLite database or building a sort-of inverted index after crawling.  
 
 ## Features
 
-- **Fetch only what you need**: winzig optimizes data retrieval by excluding content that is already in the database, making sure that only new content is fetched after the initial crawl.  
+- **Fetch only what you need**: winzig optimizes data retrieval by excluding content that has been already fetched, making sure that only new content is downloaded each time.  
 - **Async, Async, Async**: Crawling as well as the posterior data processing operates asynchronously, resulting in lightning-fast performance.  
 - **Efficient data management with SQLite**: Everything is kept in a SQLite database in your home directory.  
 - **Easy to use**: The CLI provides simple commands for crawling and searching effortlessly.  
@@ -65,7 +65,7 @@ python -m venv venv
 Activate the `virtualvenv`:
 
 ```bash
-activate venv/bin/activate
+source venv/bin/activate
 ```
 
 And run:
@@ -100,8 +100,6 @@ After finishing the crawling process, the frequencies of all terms within the sa
 winzig crawl --file="./urls" --verbose
 ```
 
-> The method used for getting the frequency of each term may result in unexpectedly high memory usage. This is primarily due to how the terms are temporarily stored in memory before being added to the database. So if you are working with a very high number of feeds and, consequently, posts, it is advisable to monitor memory usage closely during this process.
-
 ### Searching
 
 The following command starts a search for content matching the provided query and after a few seconds will return a list of relevant links.
@@ -124,15 +122,34 @@ If you prefer you can use the TUI to interact with the search engine. The TUI is
 winzig tui
 ```
 
+## More feeds, please
+
+If you're looking to expand your feed collection significantly, you can get a curated list of feeds from the [blogs.hn](https://github.com/surprisetalk/blogs.hn) repository with just a couple of commands.
+
+1. Download the JSON file containing the relevant information from the `blogs.hn` repository.
+```bash
+curl -sL https://raw.githubusercontent.com/surprisetalk/blogs.hn/main/blogs.json -o hn.json
+```
+
+2. Extract the feeds using `jq`. Make sure you have it installed in your system.
+```bash
+jq -r '.[] | select(.feed != null) | .feed' hn.json >> urls
+```
+
+> Incorporating feeds from the resultant file will significantly increase the number of requests made. Based on my experience, fetching posts from each feed, extracting content, and performing other operations may take approximately 20 to 30 minutes, depending on your Internet connection speed. The search speed will still be pretty fast.
+
 ## Roadmap
 
 - [x] Add a TUI using [`textual`](https://textual.textualize.io/).  
+- [x] Build inverted index after crawling.  
 - [ ] Improve TUI.
 - [ ] Add tests.  
-- [ ] Improving IDF calculation process.  
-- [ ] Add documents like markdown or plain text files.  
+- [ ] Add support for documents like markdown or plain text files.  
 - [ ] Add support for PDFs and other formats.  
+- [ ] Add support for crawling individual posts.
 - [ ] Make the CLI nicer.  
+- [ ] Improve logging.
+- [ ] Improve error handling.
 - [ ] Add commands to manage the SQLite database.  
 - [ ] Add support for advanced queries.  
 

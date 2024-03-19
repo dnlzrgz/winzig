@@ -46,21 +46,20 @@ class SearchEngine:
     async def bm25(self, kw: str) -> dict[str, float]:
         avdl = await self.avdl()
         results = await self.session.execute(
-            select(Occurrence.count, Post.url, Post.length)
-            .join(Post)
-            .join(Keyword)
-            .where(Keyword.keyword == kw)
+            select(Occurrence, Post).join(Post).where(Occurrence.word == kw)
         )
         occurrences = results.fetchall()
 
         search_results = {}
-        for count, url, length in occurrences:
+        for occurrence, post in occurrences:
             kw_score = await self.get_kw_score(kw)
-            numerator = count * (self.k1 + 1)
-            denominator = count + self.k1 * (1 - self.b + self.b * (length / avdl))
+            numerator = occurrence.count * (self.k1 + 1)
+            denominator = occurrence.count + self.k1 * (
+                1 - self.b + self.b * (post.length / avdl)
+            )
 
             score = kw_score * numerator / denominator
-            search_results[url] = score
+            search_results[post.url] = score
 
         return search_results
 

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.asyncio import AsyncAttrs
@@ -39,8 +39,6 @@ class Keyword(Base):
     score: Mapped[float] = mapped_column(default=0.0)
     frequency: Mapped[int] = mapped_column(default=0)
 
-    occurrences: Mapped[List["Occurrence"]] = relationship(back_populates="keyword")
-
 
 class Occurrence(Base):
     __tablename__ = "occurrences"
@@ -51,6 +49,3 @@ class Occurrence(Base):
 
     post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"))
     post: Mapped[Post] = relationship(back_populates="occurrences")
-
-    keyword_id: Mapped[Optional[int]] = mapped_column(ForeignKey("keywords.id"))
-    keyword: Mapped[Optional[Keyword]] = relationship(back_populates="occurrences")

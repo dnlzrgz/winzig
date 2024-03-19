@@ -81,9 +81,13 @@ async def process_post(
 ) -> None:
     logging.debug(f"Processing post '{url}'")
 
-    response_text = await fetch_content(client, url)
-    if not response_text:
-        return
+    try:
+        response_text = await fetch_content(client, url)
+        if not response_text:
+            return None
+    except Exception as e:
+        logging.error(f"Error fetching content from '{url}': {e}")
+        return None
 
     cleaned_content = clean_content(url, response_text)
     if not cleaned_content:

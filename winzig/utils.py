@@ -1,8 +1,10 @@
 import string
 import emoji
 
+emojis = set(emoji.EMOJI_DATA.keys())
+
 translation_table = str.maketrans(
-    {char: " " for char in string.punctuation + "“”’‘¶■▲▼└│─√©"}
+    {char: " " for char in string.punctuation + "“”’‘¶■▲▼└│─√©" + "".join(emojis)}
 )
 
 
@@ -17,7 +19,6 @@ def update_url_scores(old: dict[str, float], new: dict[str, float]) -> dict[str,
 
 
 def normalize_text(text: str) -> str:
-    normalized = emoji.replace_emoji(text, replace="")
     normalized = text.translate(translation_table).lower()
     normalized = " ".join(normalized.split())
     return normalized

@@ -1,28 +1,8 @@
-import asyncio
 import logging
 from math import log
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from winzig.models import Post, Keyword, Occurrence
-
-
-async def calculate_score(
-    session: AsyncSession,
-    kw: str,
-    total_posts: int,
-    frequency: int,
-):
-    results = await session.execute(select(Occurrence).filter(Occurrence.word == kw))
-    occurrences = results.scalars().all()
-    score = log(total_posts / (frequency + 1))
-    keyword = Keyword(
-        keyword=kw,
-        score=score,
-        frequency=frequency,
-        occurrences=occurrences,
-    )
-
-    session.add(keyword)
 
 
 async def calculate_tf_idfs(session: AsyncSession):
@@ -37,8 +17,11 @@ async def calculate_tf_idfs(session: AsyncSession):
         Occurrence.word
     )
     results = await session.execute(statement)
-    tasks = [calculate_score(session, row[0], total_posts, row[1]) for row in results]
-    await asyncio.gather(*tasks)
+    keywords = [
+        Keyword(keyword=row[0], score=log(total_posts / (row[1] + 1)), frequency=row[1])
+        for row in results
+    ]
+    session.add_all(keywords)
     await session.commit()
 
 
