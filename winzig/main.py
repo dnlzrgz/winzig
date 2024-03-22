@@ -1,16 +1,8 @@
 import asyncio
-import logging
 import click
 from winzig.config import Config
 from winzig.database import create_db_and_tables, get_engine
 from winzig.commands import crawl_links, search_links, start_tui
-
-logging.basicConfig(
-    level=logging.ERROR,
-    format="%(asctime)s %(levelname)s %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S %z",
-)
-logger = logging.getLogger(__name__)
 
 
 @click.group()

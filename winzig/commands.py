@@ -1,13 +1,13 @@
 import asyncio
-import logging
 from pathlib import Path
 import click
 from sqlalchemy.ext.asyncio import AsyncSession
-from winzig.crawler import crawl
+from winzig.crawler import crawl_from_feeds
 from winzig.tf_idf import recalculate_tf_idf
 from winzig.search_engine import SearchEngine
 from winzig.utils import get_top_urls
 from winzig.tui import TuiApp
+from winzig.console import console
 
 
 @click.command(
@@ -21,24 +21,14 @@ from winzig.tui import TuiApp
     default=None,
     help="Path to the file containing the URLs to crawl. If this file is not provided, the crawler will load URLs from the database.",
 )
-@click.option(
-    "--verbose",
-    type=bool,
-    is_flag=True,
-    help="Enable verbose logging.",
-    show_default=True,
-)
 @click.pass_context
-def crawl_links(ctx, file: Path, verbose: bool):
-    if verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-
+def crawl_links(ctx, file: Path):
     asyncio.run(_crawl_links(ctx.obj["engine"], file))
 
 
 async def _crawl_links(engine, file: Path):
     async with AsyncSession(engine) as session:
-        await crawl(session, file)
+        await crawl_from_feeds(session, file)
         await recalculate_tf_idf(session)
 
 
@@ -91,18 +81,8 @@ async def _start_tui(engine):
     help="Maximum number of search results.",
     show_default=True,
 )
-@click.option(
-    "--verbose",
-    type=bool,
-    is_flag=True,
-    help="Enable verbose logging.",
-    show_default=True,
-)
 @click.pass_context
-def search_links(ctx, query: str, k1: float, b: float, n: int, verbose: bool):
-    if verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-
+def search_links(ctx, query: str, k1: float, b: float, n: int):
     asyncio.run(_search_links(ctx.obj["engine"], query, k1, b, n))
 
 
@@ -113,4 +93,4 @@ async def _search_links(engine, query: str, k1: float, b: float, n: int):
         search_results = get_top_urls(search_results, n)
 
         for result in search_results:
-            print(result)
+            console.print(f"- [bold]{result}[/bold]")

@@ -1,8 +1,8 @@
-import logging
 from math import log
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from winzig.models import Post, Keyword, Occurrence
+from winzig.console import console
 
 
 async def calculate_tf_idfs(session: AsyncSession):
@@ -10,7 +10,7 @@ async def calculate_tf_idfs(session: AsyncSession):
     result = await session.execute(statement)
     total_posts = result.scalar()
     if not total_posts:
-        print("No posts found.")
+        console.log("[red bold]Error[/red bold]: No posts found")
         return
 
     statement = select(Occurrence.word, func.sum(Occurrence.count)).group_by(
@@ -32,8 +32,11 @@ async def delete_old_scores(session: AsyncSession):
 
 
 async def recalculate_tf_idf(session: AsyncSession):
-    logging.debug("Deleting previous TF-IDF scores.")
+    console.log("[yellow bold]WARNING[/yellow bold]: Deleting previous TF-IDF scores")
     await delete_old_scores(session)
-    logging.debug("Previous TF-IDF scores deleted.")
-    logging.info("Recalculating TF-IDF scores.")
-    await calculate_tf_idfs(session)
+
+    console.log("[green bold]SUCCESS[/green bold]: Previous TF-IDF scores deleted")
+    with console.status("Calculating tf-idf scores...", spinner="earth"):
+        await calculate_tf_idfs(session)
+
+    console.log("[green bold]SUCCESS[/green bold]: TF-IDF scores calculated")

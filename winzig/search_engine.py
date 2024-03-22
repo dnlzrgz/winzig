@@ -2,6 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from winzig.models import Post, Occurrence, Keyword
 from winzig.utils import update_url_scores, normalize_text
+from winzig.console import console
 
 
 class SearchEngine:
@@ -14,25 +15,30 @@ class SearchEngine:
         self.k1 = k1
         self.b = b
         self.session = session
+        self._avdl = None
 
     async def avdl(self) -> float | None:
+        if self._avdl is not None:
+            return self._avdl
+
         statement = select(func.count()).select_from(Post)
         result = await self.session.execute(statement)
         total_posts = result.scalar()
         if not total_posts:
-            # TODO: Handle better
-            print("No posts found.")
+            console.log("[red bold]Error[/red bold]: No posts found")
             return None
 
         statement = select(func.sum(Post.length)).select_from(Post)
         result = await self.session.execute(statement)
         total_length = result.scalar()
         if not total_length:
-            # TODO: Handle better
-            print("Error while calculating the total length.")
+            console.log(
+                "[red bold]Error[/red bold]: Something went wrong while calculating the total length of the posts."
+            )
             return None
 
-        return total_length / total_posts
+        self._avdl = total_length / total_posts
+        return self._avdl
 
     async def get_kw_score(self, kw: str) -> float:
         statement = select(Keyword).where(Keyword.keyword == kw)
