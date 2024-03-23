@@ -2,7 +2,7 @@ import asyncio
 import click
 from winzig.config import Config
 from winzig.database import create_db_and_tables, get_engine
-from winzig.commands import crawl_links, search_links, start_tui
+from winzig.commands import crawl, fetch, search, start_tui
 
 
 @click.group()
@@ -16,8 +16,9 @@ def cli(ctx):
     ctx.obj["engine"] = engine
 
 
-cli.add_command(crawl_links)
-cli.add_command(search_links)
+cli.add_command(crawl)
+cli.add_command(fetch)
+cli.add_command(search)
 cli.add_command(start_tui)
 
 if __name__ == "__main__":

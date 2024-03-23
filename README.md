@@ -2,9 +2,9 @@
 
 # [winzig](https://pypi.org/project/winzig/)
 
-winzig is a tiny search engine designed for personal use that enables users to download and search for posts from their favourite feeds.
+winzig is a tiny search engine designed for personal use that enables users to download and search for posts from their favourite feeds.  
 
-This project was heavily inspired by the [microsearch](https://github.com/alexmolas/microsearch) project and this [article](https://www.alexmolas.com/2024/02/05/a-search-engine-in-80-lines.html) about it.
+This project was heavily inspired by the [microsearch](https://github.com/alexmolas/microsearch) project and this [article](https://www.alexmolas.com/2024/02/05/a-search-engine-in-80-lines.html) about it.  
 
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
@@ -20,11 +20,13 @@ This project started as a clone of the `microsearch` project to be able to bette
 
 ## Features
 
-- **Fetch only what you need**: winzig optimizes data retrieval by excluding content that has been already fetched, making sure that only new content is downloaded each time.  
-- **Async, Async, Async**: Crawling as well as the posterior data processing operates asynchronously, resulting in lightning-fast performance.  
-- **Efficient data management with SQLite**: Everything is kept in a SQLite database in your home directory.  
-- **Easy to use**: The CLI provides simple commands for crawling and searching effortlessly.  
+- **Fetch only what you need**: winzig optimizes data retrieval by excluding previously fetched content, making sure that only new content is downloaded each time.  
+- **Async, Async, Async**: Both crawling and subsequent data processing operate asynchronously, resulting in lightning-fast performance.  
+- **Efficient data management with SQLite**: All the data is stored in a SQLite database in your home directory.
+- **Easy to use CLI**: The CLI provides simple commands for crawling and searching effortlessly, as well as some feedback.  
 - **Enhanced search speed**: The post-crawling processing ensures near-instantaneous search results.  
+- **TUI (barebones)**: winzig provides a basic TUI that facilitates an interactive search experience.
+
 
 ## Installation
 
@@ -88,27 +90,35 @@ winzig --help
 
 ## Usage
 
-The first time you initiate a crawl, you'll need a file containing a list of feeds to fetch. These feeds will be stored in the SQLite database. Therefore, there is no need to provide this file again unless you're adding new feeds. This repository contains a `urls` file that you can use.  
+The first time you initiate a crawl, you'll need a file containing a list of feeds to fetch. These feeds will be stored in the SQLite database. Therefore, there is no need to provide this file again unless you're adding new feeds. This repository contains a `feeds` file that you can use. If instead you want to fetch posts directly, you can also do it by providing a list with the URLs.
 
 > Currently, there is no way to manage the feeds or posts added to the database. So if you want to remove some of them you will need to do it manually. However, it may be more efficient to delete the database and crawl again.  
 ### Crawling
 
-The following command starts the crawler. Initially, it extracts the URLs from the specified file and saves them to the database. Then, it proceeds to fetch all the posts listed on each of these feeds. The `--verbose` flag signals that the command will provide detailed output, including HTTP errors.  
-After finishing the crawling process, the frequencies of all terms within the saved posts will be calculated. Additionally, the inverted index will also be built at this stage.
+
+The following command starts the crawler. Initially, it extracts the RSS feed URLs from the specified file and saves them to the database. Then, it proceeds to fetch all the posts listed on each of these feeds.  
 
 ```bash
-winzig crawl --file="./urls" --verbose
+winzig crawl --file="./feeds"
+```
+
+### Fetch
+
+If you want to add a list of URLs instead of crawling links from a list of feeds, you can use the fetch command.  
+
+```bash
+winzig fetch --file="./urls"
 ```
 
 ### Searching
 
-The following command starts a search for content matching the provided query and after a few seconds will return a list of relevant links.
+The following command starts a search for content matching the provided query and after a few seconds will return a list of relevant links.  
 
 ```bash
 winzig search --query="async databases with sqlalchemy"
 ```
 
-By default the number of results is `5` but you can change this by using the `-n` flag.
+By default the number of results is `5` but you can change this by using the `-n` flag.  
 
 ```bash
 winzig search --query="async databases with sqlalchemy" -n 10
@@ -116,7 +126,7 @@ winzig search --query="async databases with sqlalchemy" -n 10
 
 ### TUI
 
-If you prefer you can use the TUI to interact with the search engine. The TUI is its early stage but it offers basic functionality and faster search experiences compared to the `search` command since the content is indexed once and not each time you want to search something.
+If you prefer you can use the TUI to interact with the search engine. The TUI is its early stage but it offers basic functionality and faster search experiences compared to the `search` command since the content is indexed once and not each time you want to search something.  
 
 ```bash
 winzig tui
@@ -124,14 +134,16 @@ winzig tui
 
 ## More feeds, please
 
-If you're looking to expand your feed collection significantly, you can get a curated list of feeds from the [blogs.hn](https://github.com/surprisetalk/blogs.hn) repository with just a couple of commands.
+If you're looking to expand your feed collection significantly, you can get a curated list of feeds from the [blogs.hn](https://github.com/surprisetalk/blogs.hn) repository with just a couple of commands.  
 
 1. Download the JSON file containing the relevant information from the `blogs.hn` repository.
+
 ```bash
 curl -sL https://raw.githubusercontent.com/surprisetalk/blogs.hn/main/blogs.json -o hn.json
 ```
 
 2. Extract the feeds using `jq`. Make sure you have it installed in your system.
+
 ```bash
 jq -r '.[] | select(.feed != null) | .feed' hn.json >> urls
 ```
@@ -142,14 +154,14 @@ jq -r '.[] | select(.feed != null) | .feed' hn.json >> urls
 
 - [x] Add a TUI using [`textual`](https://textual.textualize.io/).  
 - [x] Build inverted index after crawling.  
+- [x] Make the CLI nicer.  
+- [x] Improve logging.
+- [x] Improve error handling.
+- [x] Add support for crawling individual posts.
 - [ ] Improve TUI.
 - [ ] Add tests.  
 - [ ] Add support for documents like markdown or plain text files.  
 - [ ] Add support for PDFs and other formats.  
-- [ ] Add support for crawling individual posts.
-- [ ] Make the CLI nicer.  
-- [ ] Improve logging.
-- [ ] Improve error handling.
 - [ ] Add commands to manage the SQLite database.  
 - [ ] Add support for advanced queries.  
 

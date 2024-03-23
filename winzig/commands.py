@@ -2,7 +2,7 @@ import asyncio
 from pathlib import Path
 import click
 from sqlalchemy.ext.asyncio import AsyncSession
-from winzig.crawler import crawl_from_feeds
+from winzig.crawler import crawl_from_feeds, crawl_links
 from winzig.tf_idf import recalculate_tf_idf
 from winzig.search_engine import SearchEngine
 from winzig.utils import get_top_urls
@@ -12,7 +12,7 @@ from winzig.console import console
 
 @click.command(
     name="crawl",
-    help="Crawl links and store results.",
+    help="Crawl links and store the contents of the posts found.",
 )
 @click.option(
     "-f",
@@ -22,13 +22,34 @@ from winzig.console import console
     help="Path to the file containing the URLs to crawl. If this file is not provided, the crawler will load URLs from the database.",
 )
 @click.pass_context
-def crawl_links(ctx, file: Path):
+def crawl(ctx, file: Path):
     asyncio.run(_crawl_links(ctx.obj["engine"], file))
 
 
 async def _crawl_links(engine, file: Path):
     async with AsyncSession(engine) as session:
         await crawl_from_feeds(session, file)
+        await recalculate_tf_idf(session)
+
+
+@click.command(
+    name="fetch",
+    help="Fetch links directly and store the contents.",
+)
+@click.option(
+    "-f",
+    "--file",
+    type=Path,
+    help="Path to the file containing the URLs to crawl.",
+)
+@click.pass_context
+def fetch(ctx, file: Path):
+    asyncio.run(_fetch_links(ctx.obj["engine"], file))
+
+
+async def _fetch_links(engine, file: Path):
+    async with AsyncSession(engine) as session:
+        await crawl_links(session, file)
         await recalculate_tf_idf(session)
 
 
@@ -82,15 +103,15 @@ async def _start_tui(engine):
     show_default=True,
 )
 @click.pass_context
-def search_links(ctx, query: str, k1: float, b: float, n: int):
-    asyncio.run(_search_links(ctx.obj["engine"], query, k1, b, n))
+def search(ctx, query: str, k1: float, b: float, n: int):
+    asyncio.run(_search(ctx.obj["engine"], query, k1, b, n))
 
 
-async def _search_links(engine, query: str, k1: float, b: float, n: int):
+async def _search(engine, query: str, k1: float, b: float, n: int):
     async with AsyncSession(engine) as session:
         search_engine = SearchEngine(session, k1=k1, b=b)
         search_results = await search_engine.search(query)
         search_results = get_top_urls(search_results, n)
 
         for result in search_results:
-            console.print(f"- [bold]{result}[/bold]")
+            console.print(f"- [green]{result}[/green]")

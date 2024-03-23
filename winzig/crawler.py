@@ -1,6 +1,7 @@
 import asyncio
 from collections import Counter
 from pathlib import Path
+from itertools import batched
 import httpx
 import feedparser
 from sqlalchemy import select
@@ -28,8 +29,8 @@ async def fetch_content(client: httpx.AsyncClient, url: str) -> bytes | None:
                 return None
 
             return await response.aread()
-    except httpx.HTTPError as e:
-        console.log(f"[red bold]Error[/red bold]: Got HTTP error from '{url}': {e}")
+    except httpx.HTTPError:
+        console.log(f"[red bold]Error[/red bold]: Got HTTP error from '{url}'")
         return None
     except ValueError as e:
         console.log(f"[red bold]Error[/red bold]: Failed to fetch '{url}': {e}")
@@ -67,7 +68,7 @@ async def get_posts_from_feed(session: AsyncSession, id: int, url: str) -> list[
 async def process_post(
     session: AsyncSession,
     client: httpx.AsyncClient,
-    feed: Feed,
+    feed: Feed | None,
     url: str,
 ) -> None:
     try:
@@ -125,6 +126,31 @@ async def add_feeds_from_file(session: AsyncSession, file: Path):
         await session.commit()
 
 
+async def crawl_links(session: AsyncSession, file: Path):
+    if not file.exists():
+        console.log(f"[bold red]ERROR[/bold red]: File '{file}' doesn't exist")
+        return
+
+    urls = []
+    with open(file, "r") as f:
+        for line in f:
+            url = line.strip()
+            post = await session.execute(select(Post).where(Post.url == url))
+            post = post.scalar()
+            if not post:
+                urls.append(url)
+
+    async with httpx.AsyncClient(headers=headers, follow_redirects=True) as client:
+        with console.status("Fetching posts...", spinner="earth"):
+            for batch in batched(urls, 20):
+                tasks = [process_post(session, client, None, url) for url in batch]
+
+                await asyncio.gather(*tasks)
+                await session.commit()
+
+        console.log("[green bold]SUCCESS[/green bold]: Posts fetched")
+
+
 async def crawl_from_feeds(session: AsyncSession, file: Path | None = None):
     if file is not None:
         await add_feeds_from_file(session, file)
@@ -136,11 +162,14 @@ async def crawl_from_feeds(session: AsyncSession, file: Path | None = None):
         return
 
     async with httpx.AsyncClient(headers=headers, follow_redirects=True) as client:
-        with console.status("Fetching posts...", spinner="earth"):
-            for feed in feeds:
+        with console.status("Fetching posts...", spinner="earth") as status:
+            for idx, feed in enumerate(feeds):
                 posts = await get_posts_from_feed(session, feed.id, feed.url)
                 tasks = [process_post(session, client, feed, post) for post in posts]
 
+                status.update(
+                    f"[bold][{idx + 1}/{len(feeds)}][/bold] Fetching posts from '{feed.url}'"
+                )
                 await asyncio.gather(*tasks)
 
         await session.commit()

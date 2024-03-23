@@ -25,7 +25,7 @@ class Post(Base):
     content: Mapped[str]
     length: Mapped[int] = mapped_column(default=0)
 
-    feed_id: Mapped[int] = mapped_column(ForeignKey("feeds.id"))
+    feed_id: Mapped[int] = mapped_column(ForeignKey("feeds.id"), nullable=True)
     feed: Mapped[Feed] = relationship(back_populates="posts")
 
     occurrences: Mapped[List["Occurrence"]] = relationship(back_populates="post")
