@@ -90,24 +90,31 @@ winzig --help
 
 ## Usage
 
+
+<!-- TODO: Update -->
+
 The first time you initiate a crawl, you'll need a file containing a list of feeds to fetch. These feeds will be stored in the SQLite database. Therefore, there is no need to provide this file again unless you're adding new feeds. This repository contains a `feeds` file that you can use. If instead you want to fetch posts directly, you can also do it by providing a list with the URLs.
 
 > Currently, there is no way to manage the feeds or posts added to the database. So if you want to remove some of them you will need to do it manually. However, it may be more efficient to delete the database and crawl again.  
-### Crawling
+### Crawl
 
-
-The following command starts the crawler. Initially, it extracts the RSS feed URLs from the specified file and saves them to the database. Then, it proceeds to fetch all the posts listed on each of these feeds.  
-
+<!-- TODO: -->
 ```bash
-winzig crawl --file="./feeds"
+winzig crawl
 ```
 
-### Fetch
+#### Feeds
 
-If you want to add a list of URLs instead of crawling links from a list of feeds, you can use the fetch command.  
-
+<!-- TODO: -->
 ```bash
-winzig fetch --file="./urls"
+winzig crawl feeds --file="feeds"
+```
+
+#### Posts
+
+<!-- TODO: -->
+```bash
+winzig crawl posts --file="posts"
 ```
 
 ### Searching

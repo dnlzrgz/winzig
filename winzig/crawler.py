@@ -126,7 +126,7 @@ async def add_feeds_from_file(session: AsyncSession, file: Path):
         await session.commit()
 
 
-async def crawl_links(session: AsyncSession, file: Path):
+async def crawl_links(session: AsyncSession, file: Path, batch_size: int = 20):
     if not file.exists():
         console.log(f"[bold red]ERROR[/bold red]: File '{file}' doesn't exist")
         return
@@ -141,10 +141,11 @@ async def crawl_links(session: AsyncSession, file: Path):
                 urls.append(url)
 
     async with httpx.AsyncClient(headers=headers, follow_redirects=True) as client:
-        with console.status("Fetching posts...", spinner="earth"):
-            for batch in batched(urls, 20):
+        with console.status("Fetching posts...", spinner="earth") as status:
+            for batch in batched(urls, batch_size):
                 tasks = [process_post(session, client, None, url) for url in batch]
 
+                status.update("Fetching posts...")
                 await asyncio.gather(*tasks)
                 await session.commit()
 
