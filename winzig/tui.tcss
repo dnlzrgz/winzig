@@ -3,8 +3,12 @@ Input {
   margin: 3;
 }
 
-#results-container {
+#results {
   background: $boost;
-  padding-top: 3;
-  padding-bottom: 6;
+}
+
+ResultCard {
+  background: $boost;
+  padding: 3;
+  margin: 1;
 }
