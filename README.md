@@ -14,19 +14,18 @@ This project was heavily inspired by the [microsearch](https://github.com/alexmo
 
 ## Motivation
 
-For quite some time, I've been contemplating the idea of creating my own personal search engine. I wanted a tool that could facilitate searching through my personal notes, books, articles, podcast transcripts, and anything else I wished to include. However, I was unsure of how or where to begin until I discovered the microsearch project, which reignited the momentum for the idea in my mind.  
+For quite some time, I've been contemplating the idea of creating my own personal search engine. I wanted a tool that could facilitate searching through my personal notes, books, articles, podcast transcripts, and anything else I wished to include. However, I was unsure of how or where to begin until I discovered the microsearch project, which reignited the momentum for the idea in my mind. I also though about it as an opportunity to delve deeper into asynchronous Python.  
 
 This project started as a clone of the `microsearch` project to be able to better understand how some things worked. Later, I decided to start implementing some changes like keeping all the data in a SQLite database or building a sort-of inverted index after crawling.  
 
 ## Features
 
 - **Fetch only what you need**: winzig optimizes data retrieval by excluding previously fetched content, making sure that only new content is downloaded each time.  
-- **Async, Async, Async**: Both crawling and subsequent data processing operate asynchronously, resulting in lightning-fast performance.  
-- **Efficient data management with SQLite**: All the data is stored in a SQLite database in your home directory.
-- **Easy to use CLI**: The CLI provides simple commands for crawling and searching effortlessly, as well as some feedback.  
-- **Enhanced search speed**: The post-crawling processing ensures near-instantaneous search results.  
-- **TUI (barebones)**: winzig provides a basic TUI that facilitates an interactive search experience.
-
+- **Async, Async, Async**: Both crawling and the subsequent data processing operate asynchronously, resulting in lightning-fast performance.  
+- **Efficient data management**: All the data is stored in a SQLite database in your home directory making it easy to retrieve and update.  
+- **Easy to use CLI**: The CLI provides simple commands for crawling and searching effortlessly, as well as clear feedback.  
+- **Enhanced search speed**: With the heavy lifting part done after fetching the content, search yields near-instant results.  
+- **TUI**: winzig also provides a basic TUI that facilitates an interactive search experience.  
 
 ## Installation
 
@@ -58,13 +57,13 @@ Or use `gh` if you prefer it instead:
 gh repo clone dnlzrgz/winzig
 ```
 
-Then, create a `virtualvenv` inside the winzig directory:
+Then, create a `virtualenv` inside the winzig directory:
 
 ```bash
 python -m venv venv
 ```
 
-Activate the `virtualvenv`:
+Activate the `virtualenv`:
 
 ```bash
 source venv/bin/activate
@@ -90,29 +89,40 @@ winzig --help
 
 ## Usage
 
-
-<!-- TODO: Update -->
-
-The first time you initiate a crawl, you'll need a file containing a list of feeds to fetch. These feeds will be stored in the SQLite database. Therefore, there is no need to provide this file again unless you're adding new feeds. This repository contains a `feeds` file that you can use. If instead you want to fetch posts directly, you can also do it by providing a list with the URLs.
+To begin using Winzig, the first step is to crawl some content. The easiest method for this is to utilize the feeds file located in this repository along with the `winzig crawl feeds` command. These feeds will be stored in a SQLite database in your home directory, eliminating the need to provide this file again unless you're adding new feeds. If instead what you want is to crawl specific posts directly, you can use `winzig crawl posts` and specify a file containing the URLs you want to fetch.  
 
 > Currently, there is no way to manage the feeds or posts added to the database. So if you want to remove some of them you will need to do it manually. However, it may be more efficient to delete the database and crawl again.  
+
 ### Crawl
 
-<!-- TODO: -->
+The `crawl` command serves as a convenient and efficient method to update your database with new content. When used without any subcommands, it automatically checks for new content using the feeds stored in the database and tries to retrieves it. Basically, running:  
+
 ```bash
 winzig crawl
 ```
 
+Is equivalent to:
+
+```bash
+winzig crawl feeds
+```
+
 #### Feeds
 
-<!-- TODO: -->
+The `feeds` subcommand allows you to fetch and extract content from the posts of the specified feeds provided. The feeds are stored in the database so there is no need to provide a file every time.
+
 ```bash
 winzig crawl feeds --file="feeds"
 ```
 
+```bash
+winzig crawl feeds
+```
+
 #### Posts
 
-<!-- TODO: -->
+By using the `posts` subcommand, you can extract content directly from the posts listed in the provided file.  
+
 ```bash
 winzig crawl posts --file="posts"
 ```

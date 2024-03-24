@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "winzig"
-version = "0.2.5"
+version = "0.2.6"
 description = "A tiny search engine for personal use."
 authors = ["dnlzrgz <24715931+dnlzrgz@users.noreply.github.com>"]
 license = "MIT"
@@ -34,3 +34,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 winzig = "winzig.main:cli"
+
+[tool.ruff.lint]
+ignore = ["F401"]
+

@@ -7,6 +7,7 @@ import feedparser
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from selectolax.parser import HTMLParser
+from sqlalchemy.sql.operators import is_
 from winzig.models import Feed, Occurrence, Post
 from winzig.utils import normalize_text
 from winzig.console import console
@@ -49,6 +50,15 @@ def clean_content(html: bytes) -> str:
     cleaned_text = " ".join(chunk for chunk in chunks if chunk)
 
     return cleaned_text
+
+
+def is_feed(url: str) -> bool:
+    try:
+        feed = feedparser.parse(url)
+        return True if feed.version else False
+    except Exception as e:
+        console.log(f"[red bold]Error[/red bold]: Parsing feed '{url}': {e}")
+        return False
 
 
 async def get_posts_from_feed(session: AsyncSession, id: int, url: str) -> list[str]:
@@ -119,9 +129,15 @@ async def add_feeds_from_file(session: AsyncSession, file: Path):
             feed = await session.execute(select(Feed).where(Feed.url == url))
             feed = feed.scalar()
             if not feed:
+                if not is_feed(url):
+                    console.log(
+                        f"[bold red]ERROR[/bold red]: URL '{url}' doesn't seem to be a valid RSS feed."
+                    )
+                    continue
+
                 new_feed = Feed(url=url)
                 session.add(new_feed)
-                console.print(f"[bold green]SUCCESS[/bold green]: Feed '{url}' added")
+                console.log(f"[bold green]SUCCESS[/bold green]: Feed '{url}' added")
 
         await session.commit()
 
@@ -159,7 +175,7 @@ async def crawl_from_feeds(session: AsyncSession, file: Path | None = None):
     feeds = await session.execute(select(Feed))
     feeds = feeds.scalars().all()
     if not feeds:
-        console.print("[red]Error[/red]: No feeds found!")
+        console.log("[red]Error[/red]: No feeds found!")
         return
 
     async with httpx.AsyncClient(headers=headers, follow_redirects=True) as client:
