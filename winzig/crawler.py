@@ -7,7 +7,6 @@ import feedparser
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from selectolax.parser import HTMLParser
-from sqlalchemy.sql.operators import is_
 from winzig.models import Feed, Occurrence, Post
 from winzig.utils import normalize_text
 from winzig.console import console
@@ -44,7 +43,7 @@ def clean_content(html: bytes) -> str:
         "script, style, link, noscript, object, img, embed, iframe, svg, canvas, form, audio, video"
     ):
         tag.decompose()
-    text = "".join(node.text(deep=True) for node in tree.css("body"))
+    text = "".join(node.text(deep=True) for node in tree.css("main"))
     lines = (line.strip() for line in text.splitlines())
     chunks = (phrase.strip() for line in lines for phrase in line.split(" "))
     cleaned_text = " ".join(chunk for chunk in chunks if chunk)
