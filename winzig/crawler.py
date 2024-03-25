@@ -1,6 +1,5 @@
 import asyncio
 from collections import Counter
-from pathlib import Path
 from itertools import batched
 import httpx
 import feedparser
@@ -128,47 +127,49 @@ async def process_post(
     session.add_all(occurrences)
 
 
-async def add_feeds_from_file(session: AsyncSession, file: Path):
-    if not file.exists():
-        console.log(f"[bold red]ERROR[/bold red]: File '{file}' doesn't exist")
-        return
+async def process_feed(session: AsyncSession, url: str) -> None:
+    if not is_feed(url):
+        console.log(
+            f"[bold red]ERROR[/bold red]: URL '{url}' doesn't seem to be a valid RSS feed"
+        )
+        return None
 
-    with open(file, "r") as f:
-        for line in f:
-            url = line.strip()
-            feed = await session.execute(select(Feed).where(Feed.url == url))
-            feed = feed.scalar()
-            if not feed:
-                if not is_feed(url):
-                    console.log(
-                        f"[bold red]ERROR[/bold red]: URL '{url}' doesn't seem to be a valid RSS feed."
-                    )
-                    continue
+    session.add(Feed(url=url))
+    console.log(f"[bold green]SUCCESS[/bold green]: New feed '{url}' added")
 
-                new_feed = Feed(url=url)
-                session.add(new_feed)
-                console.log(f"[bold green]SUCCESS[/bold green]: Feed '{url}' added")
 
+async def check_feeds_urls(session: AsyncSession, urls: list[str]) -> None:
+    tasks = []
+    for url in urls:
+        url = url.strip()
+        feed = await session.execute(select(Feed).where(Feed.url == url))
+        feed = feed.scalar()
+        if not feed:
+            tasks.append(process_feed(session, url))
+
+    with console.status("Processing feeds...", spinner="earth"):
+        await asyncio.gather(*tasks)
         await session.commit()
 
+    console.log("[green bold]SUCCESS[/green bold]: Feeds processed")
 
-async def crawl_links(session: AsyncSession, file: Path, batch_size: int = 20):
-    if not file.exists():
-        console.log(f"[bold red]ERROR[/bold red]: File '{file}' doesn't exist")
+
+async def crawl_links(session: AsyncSession, urls: list[str], batch_size: int = 20):
+    if len(urls) == 0:
+        console.log("[red bold]Error[/red bold]: No URLs received")
         return
 
-    urls = []
-    with open(file, "r") as f:
-        for line in f:
-            url = line.strip()
-            post = await session.execute(select(Post).where(Post.url == url))
-            post = post.scalar()
-            if not post:
-                urls.append(url)
+    post_urls = []
+    for url in urls:
+        url = url.strip()
+        post = await session.execute(select(Post).where(Post.url == url))
+        post = post.scalar()
+        if not post:
+            post_urls.append(url)
 
     async with httpx.AsyncClient(headers=headers, follow_redirects=True) as client:
         with console.status("Fetching posts...", spinner="earth") as status:
-            for batch in batched(urls, batch_size):
+            for batch in batched(post_urls, batch_size):
                 tasks = [process_post(session, client, None, url) for url in batch]
 
                 status.update("Fetching posts...")
@@ -179,10 +180,12 @@ async def crawl_links(session: AsyncSession, file: Path, batch_size: int = 20):
 
 
 async def crawl_from_feeds(
-    session: AsyncSession, file: Path | None = None, max: int | None = None
+    session: AsyncSession,
+    urls: list[str],
+    max: int | None = None,
 ):
-    if file is not None:
-        await add_feeds_from_file(session, file)
+    if len(urls) > 0:
+        await check_feeds_urls(session, urls)
 
     feeds = await session.execute(select(Feed))
     feeds = feeds.scalars().all()

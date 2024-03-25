@@ -27,7 +27,7 @@ from winzig.console import console
 )
 @click.option(
     "--b",
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     default=0.75,
     help="Length normalization factor. on the relevance score. Lower values favor shorter documents.",
     show_default=True,

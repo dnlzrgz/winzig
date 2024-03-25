@@ -1,9 +1,9 @@
 import asyncio
-from pathlib import Path
 import click
 from sqlalchemy.ext.asyncio import AsyncSession
 from winzig.crawler import crawl_from_feeds, crawl_links
 from winzig.tf_idf import recalculate_tf_idf
+from winzig.console import console
 
 
 @click.group(
@@ -13,7 +13,7 @@ from winzig.tf_idf import recalculate_tf_idf
 @click.pass_context
 def crawl(ctx):
     if ctx.invoked_subcommand is None:
-        asyncio.run(_crawl_feeds(ctx.obj["engine"], None, None))
+        asyncio.run(_crawl_feeds(ctx.obj["engine"], [], None))
 
 
 @click.command(
@@ -23,7 +23,7 @@ def crawl(ctx):
 @click.option(
     "-f",
     "--file",
-    type=Path,
+    type=click.File(),
     default=None,
     help="Path to the file containing feed sources. If empty, previous feeds added to the database will be used.",
 )
@@ -34,16 +34,25 @@ def crawl(ctx):
     default=None,
     help="Maximum number of posts to crawl from each feed.",
 )
+@click.argument("urls", nargs=-1)
 @click.pass_context
-def crawl_feeds(ctx, file: Path, max: int):
-    asyncio.run(_crawl_feeds(ctx.obj["engine"], file, max))
+def crawl_feeds(ctx, file, urls, max):
+    feed_urls = []
+
+    if file:
+        feed_urls.extend(file.read().splitlines())
+
+    if urls:
+        feed_urls.extend(urls)
+
+    asyncio.run(_crawl_feeds(ctx.obj["engine"], feed_urls, max))
 
 
-async def _crawl_feeds(engine, file: Path | None, max: int | None):
+async def _crawl_feeds(engine, urls: list, max: int | None):
     async with AsyncSession(engine) as session:
         await crawl_from_feeds(
             session,
-            file,
+            urls,
             max,
         )
         await recalculate_tf_idf(session)
@@ -56,17 +65,26 @@ async def _crawl_feeds(engine, file: Path | None, max: int | None):
 @click.option(
     "-f",
     "--file",
-    type=Path,
+    type=click.File(),
     help="Path to the file containing the links to crawl.",
 )
+@click.argument("urls", nargs=-1)
 @click.pass_context
-def crawl_posts(ctx, file: Path):
-    asyncio.run(_crawl_posts(ctx.obj["engine"], file))
+def crawl_posts(ctx, file, urls):
+    post_urls = []
+
+    if file:
+        post_urls.extend(file.read().splitlines())
+
+    if urls:
+        post_urls.extend(urls)
+
+    asyncio.run(_crawl_posts(ctx.obj["engine"], post_urls))
 
 
-async def _crawl_posts(engine, file: Path):
+async def _crawl_posts(engine, urls: list):
     async with AsyncSession(engine) as session:
-        await crawl_links(session, file)
+        await crawl_links(session, urls)
         await recalculate_tf_idf(session)
 
 
