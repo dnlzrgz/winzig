@@ -60,15 +60,26 @@ def is_feed(url: str) -> bool:
         return False
 
 
-async def get_posts_from_feed(session: AsyncSession, id: int, url: str) -> list[str]:
+async def get_posts_from_feed(
+    session: AsyncSession, feed_id: int, url: str, max: int | None
+) -> list[str]:
     try:
         feed = feedparser.parse(url)
-        statement = select(Post).where(Post.feed_id == id)
+        statement = select(Post).where(Post.feed_id == feed_id)
         results = await session.execute(statement)
         results = results.scalars()
         posts_db_urls = {post.url for post in results}
 
-        return [entry.link for entry in feed.entries if entry.link not in posts_db_urls]
+        if max:
+            return [
+                entry.link
+                for entry in feed.entries[:max]
+                if entry.link not in posts_db_urls
+            ]
+        else:
+            return [
+                entry.link for entry in feed.entries if entry.link not in posts_db_urls
+            ]
     except Exception as e:
         console.log(f"[red bold]Error[/red bold]: Parsing feed '{url}': {e}")
         return []
@@ -167,7 +178,9 @@ async def crawl_links(session: AsyncSession, file: Path, batch_size: int = 20):
         console.log("[green bold]SUCCESS[/green bold]: Posts fetched")
 
 
-async def crawl_from_feeds(session: AsyncSession, file: Path | None = None):
+async def crawl_from_feeds(
+    session: AsyncSession, file: Path | None = None, max: int | None = None
+):
     if file is not None:
         await add_feeds_from_file(session, file)
 
@@ -180,7 +193,7 @@ async def crawl_from_feeds(session: AsyncSession, file: Path | None = None):
     async with httpx.AsyncClient(headers=headers, follow_redirects=True) as client:
         with console.status("Fetching posts...", spinner="earth") as status:
             for idx, feed in enumerate(feeds):
-                posts = await get_posts_from_feed(session, feed.id, feed.url)
+                posts = await get_posts_from_feed(session, feed.id, feed.url, max)
                 tasks = [process_post(session, client, feed, post) for post in posts]
 
                 status.update(

@@ -13,7 +13,7 @@ from winzig.tf_idf import recalculate_tf_idf
 @click.pass_context
 def crawl(ctx):
     if ctx.invoked_subcommand is None:
-        asyncio.run(_crawl_feeds(ctx.obj["engine"], None))
+        asyncio.run(_crawl_feeds(ctx.obj["engine"], None, None))
 
 
 @click.command(
@@ -27,14 +27,25 @@ def crawl(ctx):
     default=None,
     help="Path to the file containing feed sources. If empty, previous feeds added to the database will be used.",
 )
+@click.option(
+    "-m",
+    "--max",
+    type=int,
+    default=None,
+    help="Maximum number of posts to crawl from each feed.",
+)
 @click.pass_context
-def crawl_feeds(ctx, file: Path):
-    asyncio.run(_crawl_feeds(ctx.obj["engine"], file))
+def crawl_feeds(ctx, file: Path, max: int):
+    asyncio.run(_crawl_feeds(ctx.obj["engine"], file, max))
 
 
-async def _crawl_feeds(engine, file: Path | None):
+async def _crawl_feeds(engine, file: Path | None, max: int | None):
     async with AsyncSession(engine) as session:
-        await crawl_from_feeds(session, file)
+        await crawl_from_feeds(
+            session,
+            file,
+            max,
+        )
         await recalculate_tf_idf(session)
 
 
