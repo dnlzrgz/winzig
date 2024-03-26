@@ -1,6 +1,6 @@
 Input {
   height: 3;
-  margin: 3;
+  margin: 1;
 }
 
 #results {

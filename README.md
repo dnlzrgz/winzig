@@ -119,12 +119,24 @@ winzig crawl feeds --file="feeds"
 winzig crawl feeds
 ```
 
+You can also provide feed URLs directly as arguments. This feeds, if valid, will also be saved to the database.  
+
+```bash
+winzig crawl feeds https://chriscoyier.net/feed/
+```
+
 #### Posts
 
 By using the `posts` subcommand, you can extract content directly from the posts listed in the provided file.  
 
 ```bash
 winzig crawl posts --file="posts"
+```
+
+Or, if you prefer it, you can pass the URLs as arguments:  
+
+```bash
+winzig crawl posts https://textual.textualize.io/blog/2024/02/11/file-magic-with-the-python-standard-library/
 ```
 
 ### Searching
@@ -167,6 +179,19 @@ jq -r '.[] | select(.feed != null) | .feed' hn.json >> urls
 
 > Incorporating feeds from the resultant file will significantly increase the number of requests made. Based on my experience, fetching posts from each feed, extracting content, and performing other operations may take approximately 20 to 30 minutes, depending on your Internet connection speed. The search speed will still be pretty fast.
 
+## About the ranking function
+
+Like the `microsearch` project, the ranking function used in winzig is the [Okapi BM25](https://en.wikipedia.org/wiki/Okapi_BM25). However, I am planning to add support for other variants of BM25, such as BM25+.
+
+### BM11 and BM15 variants
+
+If you're using the CLI for search, you have the flexibility to adjust the `k1` and `b` parameters. By manipulating the latter to `0` or `1`, you can transform the BM25 ranking function into BM15 and BM11 variants, respectively:  
+
+```bash
+winzig search --query="build search engine" --b 0 # BM15
+winzig search --query="build search engine" --b 1 # BM11
+```
+
 ## Roadmap
 
 - [x] Add a TUI using [`textual`](https://textual.textualize.io/).  
@@ -174,9 +199,11 @@ jq -r '.[] | select(.feed != null) | .feed' hn.json >> urls
 - [x] Make the CLI nicer.  
 - [x] Improve logging.
 - [x] Improve error handling.
-- [x] Add support for crawling individual posts.
+- [x] Let user pass feeds URLs directly.
+- [x] Let user pass posts URLs directly.
 - [ ] Improve TUI.
 - [ ] Add tests.  
+- [ ] Add multiple ranking functions.
 - [ ] Add support for documents like markdown or plain text files.  
 - [ ] Add support for PDFs and other formats.  
 - [ ] Add commands to manage the SQLite database.  

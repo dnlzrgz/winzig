@@ -29,6 +29,7 @@ class TuiApp(App):
         self.session = session
         self.search_engine = SearchEngine(self.session, k1=k1, b=b)
 
+    TITLE = "winzig"
     CSS_PATH = "./tui.tcss"
     BINDINGS = [
         ("d", "toggle_dark", "Toggle dark mode"),
@@ -36,10 +37,10 @@ class TuiApp(App):
     ]
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True, name="winzig", id="header")
+        yield Header(show_clock=True, name="winzig")
         yield Footer()
-        yield Input(placeholder="Search", type="text", id="search-terms")
-        with VerticalScroll(id="results"):
+        yield Input(placeholder="Search", type="text")
+        with VerticalScroll():
             pass
 
     async def on_input_submitted(self, message: Input.Submitted) -> None:
@@ -48,8 +49,15 @@ class TuiApp(App):
         else:
             self.clear_search_results()
 
+
+    async def on_input_changed(self, _: Input.Changed) -> None:
+        self.clear_search_results()
+
     @work(exclusive=True)
     async def search(self, query: str) -> None:
+        results_container = self.query_one("VerticalScroll")
+        results_container.loading = True
+
         search_results = await self.search_engine.search(query)
         search_results = get_top_urls(search_results, 10)
 
@@ -74,3 +82,4 @@ class TuiApp(App):
                     content.scalar(),
                 )
             )
+        results_container.loading = False
