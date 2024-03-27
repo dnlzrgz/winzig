@@ -12,6 +12,7 @@ class Feed(Base):
     __tablename__ = "feeds"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(nullable=True)
     url: Mapped[str] = mapped_column(index=True)
 
     posts: Mapped[List["Post"]] = relationship(back_populates="feed")

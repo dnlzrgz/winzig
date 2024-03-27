@@ -47,20 +47,21 @@ def clean_content(html: str) -> str:
     return cleaned_text
 
 
-def is_feed(url: str) -> bool:
-    try:
-        feed = feedparser.parse(url)
-        return True if feed.version else False
-    except Exception as e:
-        console.log(f"[red bold]Error[/red bold]: Parsing feed '{url}': {e}")
-        return False
-
-
 async def get_posts_from_feed(
-    session: AsyncSession, feed: Feed, max: int | None
+    session: AsyncSession,
+    client: aiohttp.ClientSession,
+    feed: Feed,
+    max: int | None,
 ) -> list[str]:
     try:
-        d = feedparser.parse(feed.url)
+        resp_text = await fetch_content(client, feed.url)
+        if not resp_text:
+            console.log(
+                f"[bold red]ERROR[/bold red]: Failed to get posts from '{feed.url}'"
+            )
+            return []
+
+        d = feedparser.parse(resp_text)
         statement = select(Post).where(Post.feed_id == feed.id)
         results = await session.execute(statement)
         results = results.scalars()
@@ -88,8 +89,8 @@ async def process_post(
     url: str,
 ) -> None:
     try:
-        response_text = await fetch_content(client, url)
-        if not response_text:
+        resp_text = await fetch_content(client, url)
+        if not resp_text:
             return None
     except Exception as e:
         console.log(
@@ -98,7 +99,7 @@ async def process_post(
         return None
 
     try:
-        cleaned_content = clean_content(response_text)
+        cleaned_content = clean_content(resp_text)
         if not cleaned_content:
             return
     except Exception as e:
@@ -124,30 +125,32 @@ async def process_post(
     session.add_all(occurrences)
 
 
-async def process_feed(session: AsyncSession, url: str) -> None:
-    if not is_feed(url):
-        console.log(
-            f"[bold red]ERROR[/bold red]: URL '{url}' doesn't seem to be a valid RSS feed"
-        )
-        return None
-
-    session.add(Feed(url=url))
-    console.log(f"[bold green]SUCCESS[/bold green]: New feed '{url}' added")
-
-
-async def check_feeds_urls(session: AsyncSession, urls: list[str]) -> None:
-    tasks = []
-    for url in urls:
-        url = url.strip()
-        feed = await session.execute(select(Feed).where(Feed.url == url))
-        feed = feed.scalar()
-        if not feed:
-            tasks.append(process_feed(session, url))
-
+async def save_feeds(
+    session: AsyncSession,
+    client: aiohttp.ClientSession,
+    urls: list[str],
+) -> None:
     with console.status("Processing feeds...", spinner="earth"):
-        await asyncio.gather(*tasks)
-        await session.commit()
+        for url in urls:
+            url = url.strip()
+            feed = await session.execute(select(Feed).where(Feed.url == url))
+            feed = feed.scalar()
+            if feed:
+                continue
 
+            resp_text = await fetch_content(client, url)
+            if not resp_text:
+                console.log(
+                    f"[bold red]ERROR[/bold red]: URL '{url}' doesn't seem to be a valid RSS feed"
+                )
+                return None
+
+            d = feedparser.parse(resp_text)
+            feed_title = d.feed.get("title", None)
+            session.add(Feed(url=url, title=feed_title))
+            console.log(f"[bold green]SUCCESS[/bold green]: New feed '{url}' added")
+
+        await session.commit()
     console.log("[green bold]SUCCESS[/green bold]: Feeds processed")
 
 
@@ -181,23 +184,23 @@ async def crawl_from_feeds(
     urls: list[str],
     max: int | None = None,
 ):
-    if len(urls) > 0:
-        await check_feeds_urls(session, urls)
-
-    feeds = await session.execute(select(Feed))
-    feeds = feeds.scalars().all()
-    if not feeds:
-        console.log("[red]Error[/red]: No feeds found!")
-        return
-
     async with aiohttp.ClientSession(headers=headers) as client:
+        if len(urls) > 0:
+            await save_feeds(session, client, urls)
+
+        feeds = await session.execute(select(Feed))
+        feeds = feeds.scalars().all()
+        if not feeds:
+            console.log("[red]Error[/red]: No feeds found!")
+            return
+
         with console.status("Fetching posts...", spinner="earth") as status:
             for idx, feed in enumerate(feeds):
-                posts = await get_posts_from_feed(session, feed, max)
+                posts = await get_posts_from_feed(session, client, feed, max)
                 tasks = [process_post(session, client, feed, post) for post in posts]
 
                 status.update(
-                    f"[bold][{idx + 1}/{len(feeds)}][/bold] Fetching posts from '{feed.url}'"
+                    f"[bold][{idx + 1}/{len(feeds)}][/bold] Fetching [bold]{len(posts)}[/bold] posts from '{feed.url}'"
                 )
                 await asyncio.gather(*tasks)
 
