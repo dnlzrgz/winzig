@@ -1,9 +1,11 @@
-Input {
+.form {
   height: 3;
   margin: 1;
+  grid-size: 2;
+  grid-columns: 85% auto;
 }
 
-#results {
+VerticalScroll {
   background: $boost;
 }
 

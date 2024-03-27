@@ -166,7 +166,8 @@ async def add_new_feeds(
     console.log("[green bold]SUCCESS[/green bold]: Feeds processed")
 
 
-async def crawl_links(session: AsyncSession, urls: list[str], batch_size: int = 20):
+# TODO: Check to remove batch size
+async def crawl_links(session: AsyncSession, urls: list[str]):
     if len(urls) == 0:
         console.log("[red bold]ERROR[/red bold]: No URLs received")
         return
@@ -181,13 +182,12 @@ async def crawl_links(session: AsyncSession, urls: list[str], batch_size: int = 
 
     async with aiohttp.ClientSession(headers=headers) as client:
         with console.status("Fetching posts...", spinner="earth") as status:
-            for batch in batched(post_urls, batch_size):
-                tasks = [process_post(session, client, None, url) for url in batch]
+            tasks = [process_post(session, client, None, url) for url in post_urls]
 
-                status.update("Fetching posts...")
-                await asyncio.gather(*tasks)
-                await session.commit()
+            status.update("Fetching posts...")
+            await asyncio.gather(*tasks)
 
+        await session.commit()
         console.log("[green bold]SUCCESS[/green bold]: Posts fetched")
 
 
