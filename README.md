@@ -194,13 +194,6 @@ winzig search --query="build search engine" --b 1 # BM11
 
 ## Roadmap
 
-- [x] Add a TUI using [`textual`](https://textual.textualize.io/).  
-- [x] Build inverted index after crawling.  
-- [x] Make the CLI nicer.  
-- [x] Improve logging.
-- [x] Improve error handling.
-- [x] Let user pass feeds URLs directly.
-- [x] Let user pass posts URLs directly.
 - [ ] Improve TUI.
 - [ ] Add tests.  
 - [ ] Add multiple ranking functions.

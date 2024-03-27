@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "winzig"
-version = "0.2.13"
+version = "0.2.14"
 description = "A tiny search engine for personal use."
 authors = ["dnlzrgz <24715931+dnlzrgz@users.noreply.github.com>"]
 license = "MIT"
