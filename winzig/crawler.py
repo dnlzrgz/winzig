@@ -143,7 +143,7 @@ async def save_feeds(
                 console.log(
                     f"[bold red]ERROR[/bold red]: URL '{url}' doesn't seem to be a valid RSS feed"
                 )
-                return None
+                continue
 
             d = feedparser.parse(resp_text)
             feed_title = d.feed.get("title", None)
@@ -200,7 +200,7 @@ async def crawl_from_feeds(
                 tasks = [process_post(session, client, feed, post) for post in posts]
 
                 status.update(
-                    f"[bold][{idx + 1}/{len(feeds)}][/bold] Fetching [bold]{len(posts)}[/bold] posts from '{feed.url}'"
+                    f"[bold][{idx + 1}/{len(feeds)}][/bold] Fetching [bold]{len(tasks)}[/bold] posts from '{feed.url}'"
                 )
                 await asyncio.gather(*tasks)
 
