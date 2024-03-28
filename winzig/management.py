@@ -55,6 +55,15 @@ async def export_feeds_to_csv(session: AsyncSession, output: str) -> None:
         console.log(f"[red bold]ERROR[/red bold]: Failed to export feeds: {e}")
 
 
+def get_feeds_from_csv(file) -> list[str]:
+    with file as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+
+        feeds = [row[2] for row in reader]
+        return feeds
+
+
 async def export_feeds_to_json(session: AsyncSession, output: str):
     try:
         with console.status("Exporting feeds to JSON...", spinner="earth"):

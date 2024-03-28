@@ -112,7 +112,7 @@ winzig crawl feeds
 The `feeds` subcommand allows you to fetch and extract content from the posts of the specified feeds provided. The feeds are stored in the database so there is no need to provide a file every time.
 
 ```bash
-winzig crawl feeds --file="feeds"
+winzig crawl feeds --file feeds.txt
 ```
 
 ```bash
@@ -169,7 +169,7 @@ You can export your feeds to plain text, CSV or JSON format using the `export` o
 winzig export feeds --format csv --output feeds.csv
 ```
 
-> Keep in mind that for the time being the `winzig crawl feeds` command only support plain text files.  
+> For the time being the `winzig crawl feeds` command supports plain text files and CSV.  
 
 ## More feeds, please
 

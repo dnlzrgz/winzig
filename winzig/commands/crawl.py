@@ -3,7 +3,7 @@ import click
 from sqlalchemy.ext.asyncio import AsyncSession
 from winzig.crawler import crawl_from_feeds, crawl_links
 from winzig.tf_idf import recalculate_tf_idf
-from winzig.management import remove_empty_feeds
+from winzig.management import get_feeds_from_csv, remove_empty_feeds
 
 
 @click.group(
@@ -49,7 +49,10 @@ def crawl_feeds(ctx, file, urls, max, prune):
     feed_urls = []
 
     if file:
-        feed_urls.extend(file.read().splitlines())
+        if file.name.endswith(".csv"):
+            feed_urls = get_feeds_from_csv(file)
+        else:
+            feed_urls = file.read().splitlines()
 
     if urls:
         feed_urls.extend(urls)
