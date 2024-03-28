@@ -2,7 +2,7 @@ import asyncio
 import click
 from winzig.config import Config
 from winzig.database import create_db_and_tables, get_engine
-from winzig.commands import crawl, search, start_tui
+from winzig.commands import crawl, search, start_tui, export
 
 
 @click.group()
@@ -19,6 +19,7 @@ def cli(ctx):
 cli.add_command(crawl)
 cli.add_command(search)
 cli.add_command(start_tui)
+cli.add_command(export)
 
 if __name__ == "__main__":
     cli()

@@ -161,6 +161,14 @@ If you prefer you can use the TUI to interact with the search engine. The TUI is
 winzig tui
 ```
 
+### Export
+
+You can export your feeds to either CSV or JSON format using the `export` or the `export feeds` commands.  
+
+```bash
+winzig export feeds --format csv --output feeds.csv
+```
+
 ## More feeds, please
 
 If you're looking to expand your feed collection significantly, you can get a curated list of feeds from the [blogs.hn](https://github.com/surprisetalk/blogs.hn) repository with just a couple of commands.  
