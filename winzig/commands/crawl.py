@@ -3,7 +3,7 @@ import click
 from sqlalchemy.ext.asyncio import AsyncSession
 from winzig.crawler import crawl_from_feeds, crawl_links
 from winzig.tf_idf import recalculate_tf_idf
-from winzig.console import console
+from winzig.management import remove_empty_feeds
 
 
 @click.group(
@@ -13,7 +13,7 @@ from winzig.console import console
 @click.pass_context
 def crawl(ctx):
     if ctx.invoked_subcommand is None:
-        asyncio.run(_crawl_feeds(ctx.obj["engine"], [], None))
+        asyncio.run(_crawl_feeds(ctx.obj["engine"], [], None, False))
 
 
 @click.command(
@@ -34,9 +34,18 @@ def crawl(ctx):
     default=None,
     help="Maximum number of posts to crawl from each feed.",
 )
+@click.option(
+    "-p",
+    "--prune",
+    type=bool,
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Remove feeds without any posts associated from the database after crawling.",
+)
 @click.argument("urls", nargs=-1)
 @click.pass_context
-def crawl_feeds(ctx, file, urls, max):
+def crawl_feeds(ctx, file, urls, max, prune):
     feed_urls = []
 
     if file:
@@ -45,17 +54,16 @@ def crawl_feeds(ctx, file, urls, max):
     if urls:
         feed_urls.extend(urls)
 
-    asyncio.run(_crawl_feeds(ctx.obj["engine"], feed_urls, max))
+    asyncio.run(_crawl_feeds(ctx.obj["engine"], feed_urls, max, prune))
 
 
-async def _crawl_feeds(engine, urls: list, max: int | None):
+async def _crawl_feeds(engine, urls: list, max: int | None, prune: bool):
     async with AsyncSession(engine) as session:
-        await crawl_from_feeds(
-            session,
-            urls,
-            max,
-        )
-        await recalculate_tf_idf(session)
+        # await crawl_from_feeds(session, urls, max)
+        # await recalculate_tf_idf(session)
+
+        if prune:
+            await remove_empty_feeds(session)
 
 
 @click.command(

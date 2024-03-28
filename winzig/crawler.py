@@ -1,6 +1,5 @@
 import asyncio
 from collections import Counter
-from itertools import batched
 import aiohttp
 import feedparser
 from sqlalchemy import select
@@ -166,7 +165,6 @@ async def add_new_feeds(
     console.log("[green bold]SUCCESS[/green bold]: Feeds processed")
 
 
-# TODO: Check to remove batch size
 async def crawl_links(session: AsyncSession, urls: list[str]):
     if len(urls) == 0:
         console.log("[red bold]ERROR[/red bold]: No URLs received")
