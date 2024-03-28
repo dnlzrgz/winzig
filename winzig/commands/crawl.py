@@ -59,8 +59,8 @@ def crawl_feeds(ctx, file, urls, max, prune):
 
 async def _crawl_feeds(engine, urls: list, max: int | None, prune: bool):
     async with AsyncSession(engine) as session:
-        # await crawl_from_feeds(session, urls, max)
-        # await recalculate_tf_idf(session)
+        await crawl_from_feeds(session, urls, max)
+        await recalculate_tf_idf(session)
 
         if prune:
             await remove_empty_feeds(session)
