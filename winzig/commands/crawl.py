@@ -13,7 +13,7 @@ from winzig.management import get_feeds_from_csv, remove_empty_feeds
 @click.pass_context
 def crawl(ctx):
     if ctx.invoked_subcommand is None:
-        asyncio.run(_crawl_feeds(ctx.obj["engine"], [], None, False))
+        asyncio.run(_crawl_feeds(ctx.obj["engine"], [], None, False, True))
 
 
 @click.command(
@@ -43,9 +43,17 @@ def crawl(ctx):
     default=False,
     help="Remove feeds without any posts associated from the database after crawling.",
 )
+@click.option(
+    "--fetch/--no-fetch",
+    type=bool,
+    is_flag=True,
+    show_default=True,
+    default=True,
+    help="Toggle to enable or disable fetching content.",
+)
 @click.argument("urls", nargs=-1)
 @click.pass_context
-def crawl_feeds(ctx, file, urls, max, prune):
+def crawl_feeds(ctx, file, urls, max, prune, fetch):
     feed_urls = []
 
     if file:
@@ -57,13 +65,14 @@ def crawl_feeds(ctx, file, urls, max, prune):
     if urls:
         feed_urls.extend(urls)
 
-    asyncio.run(_crawl_feeds(ctx.obj["engine"], feed_urls, max, prune))
+    asyncio.run(_crawl_feeds(ctx.obj["engine"], feed_urls, max, prune, fetch))
 
 
-async def _crawl_feeds(engine, urls: list, max: int | None, prune: bool):
+async def _crawl_feeds(engine, urls: list, max: int | None, prune: bool, fetch: bool):
     async with AsyncSession(engine) as session:
-        await crawl_from_feeds(session, urls, max)
-        await recalculate_tf_idf(session)
+        if fetch:
+            await crawl_from_feeds(session, urls, max)
+            await recalculate_tf_idf(session)
 
         if prune:
             await remove_empty_feeds(session)

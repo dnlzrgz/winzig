@@ -136,7 +136,15 @@ async def save_feed(
 
     d = feedparser.parse(resp_text)
     feed_title = d.feed.get("title", None)
-    session.add(Feed(url=url, title=feed_title))
+    feed_description = d.feed.get("description", None)
+
+    session.add(
+        Feed(
+            url=url,
+            title=feed_title,
+            description=feed_description,
+        )
+    )
     console.log(f"[bold green]SUCCESS[/bold green]: New feed '{url}' added")
 
 
