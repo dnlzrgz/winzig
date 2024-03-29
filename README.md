@@ -163,13 +163,15 @@ winzig tui
 
 ### Export
 
-You can export your feeds to plain text, CSV or JSON format using the `export` or the `export feeds` commands.  
+You can export your feeds and your posts to plain text or CSV format using the `export` command and the `feeds` and `posts` subcommands.  
 
 ```bash
 winzig export feeds --format csv --output feeds.csv
 ```
 
-> For the time being the `winzig crawl feeds` command supports plain text files and CSV.  
+```bash
+winzig export posts
+```
 
 ## More feeds, please
 

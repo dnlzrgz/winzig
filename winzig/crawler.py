@@ -2,6 +2,7 @@ import asyncio
 from collections import Counter
 import aiohttp
 import feedparser
+import tldextract
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from selectolax.parser import HTMLParser
@@ -109,6 +110,7 @@ async def process_post(
 
     post = Post(
         url=url,
+        domain=tldextract.extract(url).domain,
         content=cleaned_content,
         feed=feed,
         length=len(cleaned_content),
@@ -164,11 +166,15 @@ async def add_new_feeds(
 
             tasks.append(save_feed(session, client, url))
 
-    if not tasks:
-        console.log("[yellow bold]WARNING[/yellow bold]: No new feeds found")
-    else:
-        console.log(f"[green bold]SUCCESS[/green bold]: Found {len(tasks)} new feeds")
-    await asyncio.gather(*tasks)
+        if not tasks:
+            console.log("[yellow bold]WARNING[/yellow bold]: No new feeds found")
+        else:
+            console.log(
+                f"[green bold]SUCCESS[/green bold]: Found {len(tasks)} new feeds"
+            )
+
+        await asyncio.gather(*tasks)
+
     await session.commit()
     console.log("[green bold]SUCCESS[/green bold]: Feeds processed")
 

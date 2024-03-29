@@ -23,6 +23,7 @@ class Post(Base):
     __tablename__ = "posts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    domain: Mapped[str] = mapped_column(nullable=True)
     url: Mapped[str] = mapped_column(index=True)
     content: Mapped[str]
     length: Mapped[int] = mapped_column(default=0)

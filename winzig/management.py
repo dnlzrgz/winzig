@@ -1,8 +1,7 @@
 import csv
-import json
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from winzig.models import Feed
+from winzig.models import Feed, Post
 from winzig.console import console
 
 
@@ -46,9 +45,9 @@ async def export_feeds_to_csv(session: AsyncSession, output: str) -> None:
 
             with open(output, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
-                writer.writerow(["id", "title", "url"])
+                writer.writerow(["title", "url"])
                 for feed in feeds:
-                    writer.writerow([feed.id, f"{feed.title}", feed.url])
+                    writer.writerow([f"{feed.title}", feed.url])
 
         console.log(f"[green bold]SUCCESS[/green bold]: Feeds exported to {output}")
     except Exception as e:
@@ -60,23 +59,46 @@ def get_feeds_from_csv(file) -> list[str]:
         reader = csv.reader(csvfile)
         next(reader)
 
-        feeds = [row[2] for row in reader]
+        feeds = [row[1] for row in reader]
         return feeds
 
 
-async def export_feeds_to_json(session: AsyncSession, output: str):
+async def export_posts_to_txt(session: AsyncSession, output: str) -> None:
     try:
-        with console.status("Exporting feeds to JSON...", spinner="earth"):
-            results = await session.execute(select(Feed))
-            feeds = results.scalars().all()
+        with console.status("Exporting posts to plain text...", spinner="earth"):
+            results = await session.execute(select(Post))
+            posts = results.scalars().all()
 
-            feed_data = [
-                {"id": feed.id, "title": feed.title, "url": feed.url} for feed in feeds
-            ]
+            with open(output, "w", encoding="utf-8") as f:
+                for post in posts:
+                    f.write(post.url + "\n")
 
-            with open(output, "w", encoding="utf-8") as file:
-                json.dump(feed_data, file, ensure_ascii=False, indent=4)
-
-        console.log(f"[green bold]SUCCESS[/green bold]: Feeds exported to {output}")
+        console.log(f"[green bold]SUCCESS[/green bold]: Posts exported to {output}")
     except Exception as e:
-        console.log(f"[red bold]ERROR[/red bold]: Failed to export feeds: {e}")
+        console.log(f"[red bold]ERROR[/red bold]: Failed to export posts: {e}")
+
+
+async def export_posts_to_csv(session: AsyncSession, output: str) -> None:
+    try:
+        with console.status("Exporting posts to CSV...", spinner="earth"):
+            results = await session.execute(select(Post))
+            posts = results.scalars().all()
+
+            with open(output, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(["domain", "url"])
+                for post in posts:
+                    writer.writerow([post.domain, post.url])
+
+        console.log(f"[green bold]SUCCESS[/green bold]: Posts exported to {output}")
+    except Exception as e:
+        console.log(f"[red bold]ERROR[/red bold]: Failed to export posts: {e}")
+
+
+def get_posts_from_csv(file) -> list[str]:
+    with file as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+
+        posts = [row[1] for row in reader]
+        return posts

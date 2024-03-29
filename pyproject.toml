@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "winzig"
-version = "0.2.19"
+version = "0.2.21"
 description = "A tiny search engine for personal use."
 authors = ["dnlzrgz <24715931+dnlzrgz@users.noreply.github.com>"]
 license = "MIT"
@@ -20,6 +20,7 @@ aiosqlite = "^0.20.0"
 sqlalchemy = {extras = ["asyncio"], version = "^2.0.28"}
 emoji = "^2.10.1"
 aiohttp = {extras = ["speedups"], version = "^3.9.3"}
+tldextract = "^5.1.2"
 
 
 [tool.poetry.group.dev.dependencies]
