@@ -153,6 +153,12 @@ By default the number of results is `5` but you can change this by using the `-n
 winzig search --query="async databases with sqlalchemy" -n 10
 ```
 
+You can add filters to your search results by using the `--filter` flag. Currently, the only filter supported is `domain`, which allows you to specify one or more domains to filter the search results.
+
+```bash
+winzig search --query "read large files" --filter domain='motherduck, textualize'
+```
+
 ### TUI
 
 If you prefer you can use the TUI to interact with the search engine. The TUI is its early stage but it offers basic functionality and faster search experiences compared to the `search` command since the content is indexed once and not each time you want to search something.  
@@ -197,7 +203,7 @@ Like the `microsearch` project, the ranking function used in winzig is the [Okap
 
 ### BM11 and BM15 variants
 
-If you're using the CLI for search, you have the flexibility to adjust the `k1` and `b` parameters. By manipulating the latter to `0` or `1`, you can transform the BM25 ranking function into BM15 and BM11 variants, respectively:  
+If you're using the CLI for search, you have the flexibility to adjust the `k1` and `b` parameters. By manipulating the later to `0` or `1`, you can transform the BM25 ranking function into BM15 and BM11 variants, respectively:  
 
 ```bash
 winzig search --query="build search engine" --b 0 # BM15

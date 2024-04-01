@@ -1,4 +1,5 @@
 import asyncio
+from typing import Tuple
 import click
 from sqlalchemy.ext.asyncio import AsyncSession
 from winzig.search_engine import SearchEngine
@@ -39,14 +40,33 @@ from winzig.console import console
     help="Maximum number of search results to display.",
     show_default=True,
 )
+@click.option(
+    "--filter",
+    "-f",
+    type=str,
+    multiple=True,
+    help="Filter search results by 'key=value' pairs.",
+)
 @click.pass_context
-def search(ctx, query: str, k1: float, b: float, n: int):
-    asyncio.run(_search(ctx.obj["engine"], query, k1, b, n))
+def search(ctx, query: str, k1: float, b: float, n: int, filter: Tuple[str]):
+    filters = {}
+    for f in filter:
+        key, value = f.split("=")
+        filters[key] = value
+
+    asyncio.run(_search(ctx.obj["engine"], query, k1, b, n, filters))
 
 
-async def _search(engine, query: str, k1: float, b: float, n: int):
+async def _search(
+    engine,
+    query: str,
+    k1: float,
+    b: float,
+    n: int,
+    filters: dict[str, str],
+):
     async with AsyncSession(engine) as session:
-        search_engine = SearchEngine(session, k1=k1, b=b)
+        search_engine = SearchEngine(session, filters=filters, k1=k1, b=b)
         search_results = await search_engine.search(query)
         search_results = get_top_urls(search_results, n)
 

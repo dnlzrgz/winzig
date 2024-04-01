@@ -30,7 +30,7 @@ class TuiApp(App):
     def __init__(self, session, k1, b, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.session = session
-        self.search_engine = SearchEngine(self.session, k1=k1, b=b)
+        self.search_engine = SearchEngine(self.session, filters={}, k1=k1, b=b)
 
     TITLE = "winzig"
     CSS_PATH = "./tui.tcss"
