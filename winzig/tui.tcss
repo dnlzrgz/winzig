@@ -1,8 +1,14 @@
 .form {
-  height: 3;
-  margin: 1;
+  height: auto;
   grid-size: 2;
-  grid-columns: 85% auto;
+  margin-top: 1;
+  margin-bottom: 1;
+  grid-columns: 1fr auto;
+  grid-gutter: 1;
+}
+
+RadioSet {
+  layout: horizontal;
 }
 
 VerticalScroll {
